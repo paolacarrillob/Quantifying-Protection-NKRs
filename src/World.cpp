@@ -31,6 +31,7 @@ void World :: LoadParameterFile(const string& fileName)
 	paramFile.Load("Mutation type host", &mutationTypeHost);
 	paramFile.Load("Contacts per week", &contactRate);
 	paramFile.Load("KIR Loci", &KIRLoci);
+	paramFile.Load("MHC Loci", &MHCLoci);
 	paramFile.Load("HLA-C alleles distribution", &HLA_C);
 	paramFile.Load("Number HLA-C alleles",&sizeMHCPool);
 	paramFile.Load("MHC-KIR specificity", &KIRspecificity);
@@ -127,7 +128,7 @@ bool World::Initialize()
 		int mhc_gene = MHCPool.RandomlyPickGene(HLA_C);
 		int mhc_gene2 = MHCPool.RandomlyPickGene(HLA_C);
 
-		Host dummyhost(KIRLoci, mhc_gene, mhc_gene2, mutationRate, education, expressionExtraKIRs, KIRGenesMap);
+		Host dummyhost(KIRLoci, MHCLoci, mhc_gene, mhc_gene2, mutationRate, education, expressionExtraKIRs, KIRGenesMap);
 		hosts.push_back(dummyhost);
 	}
 
@@ -173,7 +174,7 @@ bool World::Birth(int index, Host& baby_host)
 			parent = index;
 		else
 			parent = randomindex;
-		Host testHost(KIRLoci, hosts.at(parent).mhcGenes ,MHCPool, HLA_C,/*KIRPool, */hosts.at(index).kirGenes,hosts.at(randomindex).kirGenes, mutationRate,education,expressionExtraKIRs, KIRGenesMap, mutationTypeHost);
+		Host testHost(KIRLoci,MHCLoci, hosts.at(parent).mhcGenes ,MHCPool, HLA_C,/*KIRPool, */hosts.at(index).kirGenes,hosts.at(randomindex).kirGenes, mutationRate,education,expressionExtraKIRs, KIRGenesMap, mutationTypeHost);
 		baby_host.Copy(testHost);
 		return true;
 	}

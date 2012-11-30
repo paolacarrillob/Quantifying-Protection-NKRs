@@ -134,10 +134,10 @@ void Virus :: SaveParametersVirus(fstream& outfile)
  *Constructs a host for the initialization of the population: it fills the MHC genes with a randomly picked allele from the population
  * and creates KIRs that match their own MHC according to the specificity*/
 //Host::Host(int loci_kir, int mhc1, int mhc2, double _mutationRate, bool _tuning, KIRGenePool& kirPool,int numberOfExtraKirs /*MHCGenePool& mhcPool, bool hla, */) {
-Host::Host(int loci_kir, int mhc1, int mhc2, double _mutationRate, bool _tuning, int numberOfExtraKirs,Map& kirMap) {
+Host::Host(int loci_kir, int loci_mhc, int mhc1, int mhc2, double _mutationRate, bool _tuning, int numberOfExtraKirs,Map& kirMap) {
 //Host::Host(int loci_kir, int mhc1, int mhc2, int specificity, double _mutationRate, bool _tuning, KIRGenePool& kirPool,int numberOfExtraKirs /*MHCGenePool& mhcPool, bool hla, */) {
 
-	InitializeHostParameters(_mutationRate,_tuning, loci_kir);
+	InitializeHostParameters(_mutationRate,_tuning, loci_kir, loci_mhc);
 	//fill the mhc Genes
 	Gene firstGene;
 	firstGene.SetGeneID(mhc1);
@@ -187,20 +187,24 @@ Host::Host(int loci_kir, int mhc1, int mhc2, double _mutationRate, bool _tuning,
 }
 
 /*Constructs a baby host out of two parents*/
-Host::Host(int loci_kir, vector<Gene>& mhcGenesParent, GenePool& mhcPool, bool dist, vector<KIRGene>& kirGenesMother, vector<KIRGene>& kirGenesFather,double _mutationRate, bool _tuning, int numberOfExtraKirs, Map& kirMap, int mutationType)
+Host::Host(int loci_kir, int loci_mhc, vector<Gene>& mhcGenesParent, GenePool& mhcPool, bool dist, vector<KIRGene>& kirGenesMother, vector<KIRGene>& kirGenesFather,double _mutationRate, bool _tuning, int numberOfExtraKirs, Map& kirMap, int mutationType)
 //Host::Host(int loci_kir, vector<Gene>& mhcGenesParent, GenePool& mhcPool, bool dist, GenePool& kirPool, vector<Gene>& kirGenesMother, vector<Gene>& kirGenesFather, int specificity, double _mutationRate, bool _tuning, int numberOfExtraKirs)
 {	//to create a NEW host: the haplotypes of KIR of BOTH parents are needed. Besides one MHC haplotype of one parent plus one of the pool
 
 	int hhhhaaaap = 0;
-	InitializeHostParameters(_mutationRate, _tuning, loci_kir);
-	int mhcFromTheGenePool = mhcPool.RandomlyPickGene(dist);
+	InitializeHostParameters(_mutationRate, _tuning, loci_kir, loci_mhc);
 
 	int KIR_init_mum = 0;
 	int KIR_end_mum = 0;
+	int MHC_init_mum = 0;
+	int MHC_end_mum = 0;
 
 	int KIR_init_dad = 0;
 	int KIR_end_dad = 0;
-	//pick haplotype 1/0 of each parent!
+	int MHC_init_pool = 0;
+	int MHC_end_pool = 0;
+
+	//pick haplotype 1/0 of each parent for the KIRs!
 	int hap_mum=(RandomNumberDouble()<0.5);
 	int hap_dad= (RandomNumberDouble()<0.5);
 	//int k= 0;
@@ -220,19 +224,30 @@ Host::Host(int loci_kir, vector<Gene>& mhcGenesParent, GenePool& mhcPool, bool d
 		KIR_init_dad = LOCI_KIR;
 		KIR_end_dad = LOCI_KIR*TWO;
 	}
+
 	else
 	{
 		KIR_init_dad = 0;
 		KIR_end_dad = LOCI_KIR;
 	}
 
-	//generate new mhc genes for the new born
-	int hap = (RandomNumberDouble()<0.5);
-	Gene mhc1;
-	mhc1.Copy(mhcGenesParent.at(hap));
-	//mhc1.SetGeneID(mhcGenesParent.at(hap).GetGeneID());
-	Gene mhc2;
-	mhc2.SetGeneID(mhcFromTheGenePool);
+	//pick haplotype 1/0 of the parent for the MHCs!
+	int hap_mhc = (RandomNumberDouble()<0.5);
+	if(hap_mhc)
+	{
+		MHC_init_pool = 0;
+		MHC_end_pool = LOCI_MHC;
+		MHC_init_mum = LOCI_MHC;
+		MHC_end_mum = LOCI_MHC*TWO;
+	}
+
+	else
+	{
+ 		MHC_init_mum = 0;
+ 		MHC_end_mum = LOCI_MHC;
+		MHC_init_pool = LOCI_MHC;
+		MHC_end_pool = LOCI_MHC*TWO;
+	}
 
 	//copy the KIR haplotype into the new host (mutation occurs!)
 	int hap_child = (RandomNumberDouble()<0.5);
@@ -259,18 +274,23 @@ Host::Host(int loci_kir, vector<Gene>& mhcGenesParent, GenePool& mhcPool, bool d
 			}
 			kirGenes.push_back(kir_hap1);
 		}
+
 		//copy the MHC haplotype into the new host
-		int mhc_hap = (RandomNumberDouble()<0.5);
-		hhhhaaaap = mhc_hap; //to keep track on which mhc is from the pool and which is from the parents (for education)
-		if(mhc_hap)
+
+		for(int m = MHC_init_mum; m < MHC_end_mum; m++)
 		{
+			Gene mhc1;
+			mhc1.Copy(mhcGenesParent.at(m));
 			mhcGenes.push_back(mhc1);
-			mhcGenes.push_back(mhc2);
 		}
-		else
+
+		//generate new mhc genes for the new born
+		for(int mm = MHC_init_pool; mm<MHC_end_pool; mm++)
 		{
+			Gene mhc2;
+			int mhcFromTheGenePool = mhcPool.RandomlyPickGene(dist);
+			mhc2.SetGeneID(mhcFromTheGenePool);
 			mhcGenes.push_back(mhc2);
-			mhcGenes.push_back(mhc1);
 		}
 	}
 	else
@@ -296,18 +316,20 @@ Host::Host(int loci_kir, vector<Gene>& mhcGenesParent, GenePool& mhcPool, bool d
 			kirGenes.push_back(kir_hap2);
 		}
 		//copy the MHC haplotype into the new host
-
-		int mhc_hap = (RandomNumberDouble()<0.5);
-		hhhhaaaap = mhc_hap;
-		if(mhc_hap)
+		//generate new mhc genes for the new born
+		for(int m = MHC_init_pool; m < MHC_end_pool; m++)
 		{
+			Gene mhc1;
+			mhc1.Copy(mhcGenesParent.at(m));
 			mhcGenes.push_back(mhc1);
-			mhcGenes.push_back(mhc2);
 		}
-		else
+
+		for(int mm = MHC_init_mum; mm<MHC_end_mum; mm++)
 		{
+			Gene mhc2;
+			int mhcFromTheGenePool = mhcPool.RandomlyPickGene(dist);
+			mhc2.SetGeneID(mhcFromTheGenePool);
 			mhcGenes.push_back(mhc2);
-			mhcGenes.push_back(mhc1);
 		}
 	}
 
@@ -320,12 +342,13 @@ Host::Host(int loci_kir, vector<Gene>& mhcGenesParent, GenePool& mhcPool, bool d
 	age = 1.0; //newborns are given the age of 15
 }
 
-void Host::InitializeHostParameters(double mutationRate, bool _tuning, int loci_kir)
+void Host::InitializeHostParameters(double mutationRate, bool _tuning, int loci_kir, int loci_mhc)
 {
 	dead = false;
 	mutationRateHost = mutationRate;
 	tuning = _tuning;
 	LOCI_KIR = loci_kir;
+	LOCI_MHC = loci_mhc;
 	infectionType = susceptible;
 	infectionTime = 0.0;
 	immunityTime = 0.0;
@@ -532,6 +555,7 @@ Host& Host:: Copy(Host& rightHandSideHost)
 	this->tuning = rightHandSideHost.tuning;
 	this->age = rightHandSideHost.age;
 	this->LOCI_KIR = rightHandSideHost.LOCI_KIR;
+	this->LOCI_MHC = rightHandSideHost.LOCI_MHC;
 	this->infectionType = rightHandSideHost.infectionType;
 	this->infectionTime = rightHandSideHost.infectionTime;
 	this->immunityTime = rightHandSideHost.immunityTime;
@@ -879,7 +903,7 @@ void Host::SaveBackupHost(fstream& backupFile)
 	//cout << "saving hosts..."<<endl;
 	vector<KIRGene>::iterator kirIt;
 	vector<Gene>::iterator mhcIt;
-	backupFile << LOCI_KIR << "\t"<< age << "\t"<< infectionType<< "\t"<< infectionTime << "\t"<<clearanceTime << "\t"<<immunityTime << "\t"<< tuning << "\t"
+	backupFile << LOCI_KIR << "\t"<<LOCI_MHC<<"\t"<< age << "\t"<< infectionType<< "\t"<< infectionTime << "\t"<<clearanceTime << "\t"<<immunityTime << "\t"<< tuning << "\t"
 	<< dead << "\t"<< mutationRateHost << "\t"<< viralDeathRate << "\t"<<ageInfection <<"\t"<<ageClearance <<"\t"<<inhibitoryKIRs<<"\t"<<activatingKIRs<<"\t";
 
 	pathogen.SaveBackupVirus(backupFile);
@@ -899,6 +923,7 @@ void Host::RestoreHost(const string& sline)
 {
 	stringstream ssline(sline);
 	ssline >> LOCI_KIR;
+	ssline >> LOCI_MHC;
 	ssline >>age;
 	//Ouss ssline >> infectionType;
 	int inf;
