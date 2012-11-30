@@ -10,7 +10,7 @@
 #include "Genes.h"
 #define TWO 2
 //#define LOCI_KIR 5
-#define LOCI_MHC 1
+//#define LOCI_MHC 1
 const double YEAR = 31207680.0;
 const double MONTH = 2600640.0;
 const double WEEK = 604800.0;
@@ -58,11 +58,11 @@ protected:
 class Host {
 public:
 	Host(){}; //for creating memory
-	Host(int loci_kir, int mhc1, int mhc2, double _mutationRate, bool _tuning,
+	Host(int loci_kir, int loci_mhc, int mhc1, int mhc2, double _mutationRate, bool _tuning,
 			int numberOfExtraKirs, Map& kirMap /*MHCGenePool& mhcPool, bool hla, */); //for initialization of the population //works
 
 	//This is where all my troubles come from
-	Host(int loci_kir, vector<Gene>& mhcGenesParent, GenePool& mhcPool, bool dist,
+	Host(int loci_kir, int loci_mhc, vector<Gene>& mhcGenesParent, GenePool& mhcPool, bool dist,
 			vector<KIRGene>& kirGenesMother, vector<KIRGene>& kirGenesFather, double _mutationRate,
 			bool _tuning,int numberOfExtraKirs, Map& kirMap, int mutationType);
 
@@ -73,7 +73,7 @@ public:
 	bool IsDead()const{return dead;}
 //	bool IsHostToBeTuned()const{return tuning;}
 
-	void InitializeHostParameters(double mutationRate, bool _tuning, int kirloci);
+	void InitializeHostParameters(double mutationRate, bool _tuning, int kirloci,int loci_mhc);
 	void SetHostParameters(bool t, double mut, int inftyp, double inftim, double viraldeathm ,double clrtim);
 	void EducateKIRs(); //works with activating receptors also!
 	//void EducateKIRs(int specificity);//works
@@ -128,7 +128,7 @@ public:
 protected:
 
 	int LOCI_KIR;
-	//int LOCI_MHC;
+	int LOCI_MHC;
 	double age;
 	bool dead;
 	bool tuning;

@@ -53,6 +53,7 @@ public:
 	bool HLA_C;
 	int KIRspecificity;
 	int KIRLoci;
+	int MHCLoci;
 	int sizeMHCPool;
 	unsigned int initHostPop;
 	int mutationType;
