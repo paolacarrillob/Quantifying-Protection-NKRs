@@ -95,6 +95,8 @@ void World :: LoadParameterFile(const string& fileName)
 	cout << "Introducing virus after " << timeIntroducingInfection/YEAR << " years \n";
 	cout << "Mutation rate host " << mutationRate << "\n";
 	cout << "Mutation type host " << mutationTypeHost << "\n";
+	cout << "KIR loci " << KIRLoci << "\n";
+	cout << "MHC loci " << MHCLoci << "\n";
 	cout << "Contacts per week: " << contactRate << "\n";
 	cout << "HLA-C alleles distribution " << HLA_C<<"\n";
 	cout << "Number of HLA alleles " << sizeMHCPool<<"\n";
@@ -125,10 +127,7 @@ bool World::Initialize()
 	//initialize the population with the MHC genes of the pools
 	for (unsigned int i = 0; i< initHostPop; i++)
 	{
-		int mhc_gene = MHCPool.RandomlyPickGene(HLA_C);
-		int mhc_gene2 = MHCPool.RandomlyPickGene(HLA_C);
-
-		Host dummyhost(KIRLoci, MHCLoci, mhc_gene, mhc_gene2, mutationRate, education, expressionExtraKIRs, KIRGenesMap);
+		Host dummyhost(KIRLoci, MHCLoci, mutationRate, education, expressionExtraKIRs, KIRGenesMap, MHCPool, HLA_C);
 		hosts.push_back(dummyhost);
 	}
 

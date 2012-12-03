@@ -133,18 +133,22 @@ void Virus :: SaveParametersVirus(fstream& outfile)
 /*FUNCTIONS OF CLASS HOST
  *Constructs a host for the initialization of the population: it fills the MHC genes with a randomly picked allele from the population
  * and creates KIRs that match their own MHC according to the specificity*/
-//Host::Host(int loci_kir, int mhc1, int mhc2, double _mutationRate, bool _tuning, KIRGenePool& kirPool,int numberOfExtraKirs /*MHCGenePool& mhcPool, bool hla, */) {
-Host::Host(int loci_kir, int loci_mhc, int mhc1, int mhc2, double _mutationRate, bool _tuning, int numberOfExtraKirs,Map& kirMap) {
-//Host::Host(int loci_kir, int mhc1, int mhc2, int specificity, double _mutationRate, bool _tuning, KIRGenePool& kirPool,int numberOfExtraKirs /*MHCGenePool& mhcPool, bool hla, */) {
+Host::Host(int loci_kir, int loci_mhc, double _mutationRate, bool _tuning, int numberOfExtraKirs,Map& kirMap, MHCGenePool& mhcPool, bool hla) {
 
 	InitializeHostParameters(_mutationRate,_tuning, loci_kir, loci_mhc);
 	//fill the mhc Genes
-	Gene firstGene;
-	firstGene.SetGeneID(mhc1);
-	mhcGenes.push_back(firstGene);
+	for(int i = 0; i <LOCI_MHC*TWO; i ++)
+	{
+		Gene firstGene;
+		int mhc1 = mhcPool.RandomlyPickGene(hla);
+		firstGene.SetGeneID(mhc1);
+		mhcGenes.push_back(firstGene);
+	}
+
+/*
 	Gene secondGene;
 	secondGene.SetGeneID(mhc2);
-	mhcGenes.push_back(secondGene);
+	mhcGenes.push_back(secondGene);*/
 
 	//create random KIRs with random specificity for ONE haplotype
 	// (at the beginning of the simulation, the size of the map should equal the LOCI_NUMBER)
@@ -161,13 +165,6 @@ Host::Host(int loci_kir, int loci_mhc, int mhc1, int mhc2, double _mutationRate,
 		kir.SetGeneFunctionality(false);
 		kir.SetGeneExpression(false);
 		kir.SetGeneType(0); // 0 for inhibitory receptor!
-
-		///for testing!
-		/*if(RandomNumberDouble() < 0.5)
-			kir.SetGeneType(0);
-		else
-			kir.SetGeneType(1);*/
-
 		kirGenes.push_back(kir);
 
 	}
@@ -191,8 +188,8 @@ Host::Host(int loci_kir, int loci_mhc, vector<Gene>& mhcGenesParent, GenePool& m
 //Host::Host(int loci_kir, vector<Gene>& mhcGenesParent, GenePool& mhcPool, bool dist, GenePool& kirPool, vector<Gene>& kirGenesMother, vector<Gene>& kirGenesFather, int specificity, double _mutationRate, bool _tuning, int numberOfExtraKirs)
 {	//to create a NEW host: the haplotypes of KIR of BOTH parents are needed. Besides one MHC haplotype of one parent plus one of the pool
 
-	int hhhhaaaap = 0;
 	InitializeHostParameters(_mutationRate, _tuning, loci_kir, loci_mhc);
+	 //cout<< "do I get stuck here?? | Host constructor!"<<endl;
 
 	int KIR_init_mum = 0;
 	int KIR_end_mum = 0;
@@ -201,8 +198,6 @@ Host::Host(int loci_kir, int loci_mhc, vector<Gene>& mhcGenesParent, GenePool& m
 
 	int KIR_init_dad = 0;
 	int KIR_end_dad = 0;
-	int MHC_init_pool = 0;
-	int MHC_end_pool = 0;
 
 	//pick haplotype 1/0 of each parent for the KIRs!
 	int hap_mum=(RandomNumberDouble()<0.5);
@@ -235,18 +230,14 @@ Host::Host(int loci_kir, int loci_mhc, vector<Gene>& mhcGenesParent, GenePool& m
 	int hap_mhc = (RandomNumberDouble()<0.5);
 	if(hap_mhc)
 	{
-		MHC_init_pool = 0;
-		MHC_end_pool = LOCI_MHC;
 		MHC_init_mum = LOCI_MHC;
 		MHC_end_mum = LOCI_MHC*TWO;
 	}
 
 	else
 	{
- 		MHC_init_mum = 0;
- 		MHC_end_mum = LOCI_MHC;
-		MHC_init_pool = LOCI_MHC;
-		MHC_end_pool = LOCI_MHC*TWO;
+		MHC_init_mum = 0;
+		MHC_end_mum = LOCI_MHC;
 	}
 
 	//copy the KIR haplotype into the new host (mutation occurs!)
@@ -276,16 +267,16 @@ Host::Host(int loci_kir, int loci_mhc, vector<Gene>& mhcGenesParent, GenePool& m
 		}
 
 		//copy the MHC haplotype into the new host
-
 		for(int m = MHC_init_mum; m < MHC_end_mum; m++)
 		{
 			Gene mhc1;
 			mhc1.Copy(mhcGenesParent.at(m));
 			mhcGenes.push_back(mhc1);
+			cout << mhc1.GetGeneID() << "_" << mhc1.GetGeneSpecificity() << " ";
 		}
 
-		//generate new mhc genes for the new born
-		for(int mm = MHC_init_pool; mm<MHC_end_pool; mm++)
+		//generate new mhc genes (from the pool) for the new born
+		for(int mm = 0; mm<LOCI_MHC; mm++)
 		{
 			Gene mhc2;
 			int mhcFromTheGenePool = mhcPool.RandomlyPickGene(dist);
@@ -317,20 +308,24 @@ Host::Host(int loci_kir, int loci_mhc, vector<Gene>& mhcGenesParent, GenePool& m
 		}
 		//copy the MHC haplotype into the new host
 		//generate new mhc genes for the new born
-		for(int m = MHC_init_pool; m < MHC_end_pool; m++)
-		{
-			Gene mhc1;
-			mhc1.Copy(mhcGenesParent.at(m));
-			mhcGenes.push_back(mhc1);
-		}
 
-		for(int mm = MHC_init_mum; mm<MHC_end_mum; mm++)
+		//generate new mhc genes (from the pool) for the new born
+		for(int mm = 0; mm<LOCI_MHC; mm++)
 		{
 			Gene mhc2;
 			int mhcFromTheGenePool = mhcPool.RandomlyPickGene(dist);
 			mhc2.SetGeneID(mhcFromTheGenePool);
 			mhcGenes.push_back(mhc2);
 		}
+		//copy the MHC haplotype into the new host
+		for(int m = MHC_init_mum; m < MHC_end_mum; m++)
+		{
+			Gene mhc1;
+			mhc1.Copy(mhcGenesParent.at(m));
+			mhcGenes.push_back(mhc1);
+			cout << mhc1.GetGeneID() << "_" << mhc1.GetGeneSpecificity() << " ";
+		}
+
 	}
 
 	if(tuning == true)
@@ -424,43 +419,56 @@ void Host :: EducateKIRs()
 
 	for(kirIt = kirGenes.begin(); kirIt !=kirGenes.end(); kirIt ++)
 	{
+		int education_signal_activating = 0; // to keep track of the activating signal per receptor
 		for(mhcIt = mhcGenes.begin(); mhcIt !=mhcGenes.end(); mhcIt ++)
 		{
 			int bindingStrength = kirIt->BindMolecule(*mhcIt);
 			//mhcIt->PrintBits();
 			//kirIt->PrintBits();
-			if(bindingStrength>=kirIt->GetGeneSpecificity()) //if the KIR binds to MHC
+
+			if(kirIt->IsInhibitory()) // if KIRs are inhibitory
 			{
-				//cout << "it binds!"<<endl;
-				if(kirIt->IsInhibitory()) //AND is inhibitory set it as functional
+				if(bindingStrength>=kirIt->GetGeneSpecificity()) //AND it binds to the MHC
 				{
-					kirIt->SetGeneFunctionality(true);
+					//cout << "it binds!"<<endl;
+					kirIt->SetGeneFunctionality(true); //it is licensed!
 					kirIt->SetGeneExpression(true);
 					//cout<< "inhibitory |" <<kirIt->IsFunctional()<< kirIt->GetGeneType()<<endl;
 				}
-				if(kirIt->IsActivating()) //BUT if it is activating set it as unfunctional
+
+				else // but if it doesn't bind
 				{
-					kirIt->SetGeneFunctionality(false);
+					//cout << "it doesn't bind!"<<endl;
+					kirIt->SetGeneFunctionality(false); // it should not be licensed
+					kirIt->SetGeneExpression(false);
+					//cout<< "inhibitory |" <<kirIt->IsFunctional()<< kirIt->GetGeneType()<<endl;
+				}
+			}
+
+			if(kirIt->IsActivating()) // if KIRs are activating
+			{
+				if(bindingStrength>=kirIt->GetGeneSpecificity()) // AND it binds to the MHC
+				{
+					//cout << "it binds!"<<endl;
+					kirIt->SetGeneFunctionality(false); //this gene is unlicensed
 					kirIt->SetGeneExpression(false);
 					//cout<< "activating |" <<kirIt->IsFunctional()<< kirIt->GetGeneType()<<endl;
 				}
-			}
-			else //if the KIR DOESN'T bind to the MHC
-			{
-				//cout << "it doesn't bind!"<<endl;
-				if(kirIt->IsInhibitory()) //AND is inhibitory set it as unfunctional
+				else //BUT if it deosn't bind
 				{
-					kirIt->SetGeneFunctionality(false);
-					kirIt->SetGeneExpression(false);
-					//cout<< "inhibitory |" <<kirIt->IsFunctional()<< kirIt->GetGeneType()<<endl;
-				}
-				if(kirIt->IsActivating()) //BUT if is activating set it as functional
-				{
-					kirIt->SetGeneFunctionality(true);
-					kirIt->SetGeneExpression(true);
-					//cout<< "activating |"<<kirIt->IsFunctional()<< kirIt->GetGeneType()<<endl;
+					//cout << "it doesn't bind!"<<endl;
+					education_signal_activating ++; //keep track of how many MHC it doesn't bind
+					//cout << education_signal_activating <<endl;
+					//cout<< "activating |" <<kirIt->IsFunctional()<< kirIt->GetGeneType()<<endl;
 				}
 			}
+		}
+		if(education_signal_activating == mhcGenes.size()) //if the activating KIR doesn't recognize ANY of the MHC
+		{
+			//cout << education_signal_activating << "|" << mhcGenes.size() << ": ";
+			kirIt->SetGeneFunctionality(true); //the gene is licensed
+			kirIt->SetGeneExpression(true);
+			//cout<< "activating |"<<kirIt->IsFunctional()<< kirIt->GetGeneType()<<endl;
 		}
 	}
 }

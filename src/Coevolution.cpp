@@ -12,7 +12,7 @@ using namespace std;
 
 int main(int argc, char*argv[])
 {
-	/* string parameterFile(argv[1]);
+	/*string parameterFile(argv[1]);
 	World oneWorld;
 	oneWorld.LoadParameterFile(parameterFile);
 	oneWorld.Initialize();
@@ -25,31 +25,50 @@ int main(int argc, char*argv[])
 	}
 
 	int randomHost = RandomNumber(0, oneWorld.hosts.size()-1);
+	oneWorld.ShuffleHosts();
 	Host dummy;
 	dummy.Copy(oneWorld.hosts.at(0));
 	cout << "educating dummy................."<<endl;
 	dummy.EducateKIRs();
+	exit(0);
+
+	Host baby_host;
+	oneWorld.Birth(0,baby_host);
 	dummy.CountFunctionalKIRs();
 	int y = dummy.CountExpressedKIRs();
 	//cout << "number of FunctionalKIRs: " << x <<endl;
 	cout << "number of KIRs: " << y <<endl;
-	exit(0);
 	dummy.InfectWith(oneWorld.decoyVirus,0.0);
 	cout << "virus type: "<<oneWorld.decoyVirus.GetVirusType()<<endl;
 	dummy.ClearInfection(1.0);
 	cout << "virus type: "<<oneWorld.decoyVirus.GetVirusType()<<endl;
+
 	//oneWorld.Escape(0);
 	dummy.ClearInfection(1.0);
 
-	/*
+
 	for(unsigned int i = 0; i< dummy.kirGenes.size(); i++)
 	{
 		cout << dummy.kirGenes.at(i).GetGeneID()<<"_"<<dummy.kirGenes.at(i).GetGeneSpecificity() << " ";
 	}
 
 	cout << endl;
+	cout <<endl;
+	cout <<"dummy: "<<endl;
+	for(unsigned int i = 0; i< dummy.mhcGenes.size(); i++)
+	{
+		cout << dummy.mhcGenes.at(i).GetGeneID()<<"_"<<dummy.mhcGenes.at(i).GetGeneSpecificity() << " ";
+	}
 
-	/*for(unsigned int i=0; i< dummy.kirGenes.size(); i++)
+	cout << endl;
+	cout <<"baby: "<<endl;
+	for(unsigned int i = 0; i< baby_host.mhcGenes.size(); i++)
+	{
+		cout << baby_host.mhcGenes.at(i).GetGeneID()<<"_"<<baby_host.mhcGenes.at(i).GetGeneSpecificity() << " ";
+	}
+
+	cout << endl;
+	for(unsigned int i=0; i< dummy.kirGenes.size(); i++)
 	{
 		if(RandomNumberDouble() <0.8)
 		{
@@ -93,8 +112,8 @@ int main(int argc, char*argv[])
 
 
 	exit(0);
-
 */
+
 
 	//ACTUAL SIMULATION STARTING!
 	cerr << "Testing if stderr is redirected to stdoutput" << endl;
