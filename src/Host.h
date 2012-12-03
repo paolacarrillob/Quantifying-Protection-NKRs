@@ -58,8 +58,8 @@ protected:
 class Host {
 public:
 	Host(){}; //for creating memory
-	Host(int loci_kir, int loci_mhc, int mhc1, int mhc2, double _mutationRate, bool _tuning,
-			int numberOfExtraKirs, Map& kirMap /*MHCGenePool& mhcPool, bool hla, */); //for initialization of the population //works
+	Host(int loci_kir, int loci_mhc, double _mutationRate, bool _tuning,
+			int numberOfExtraKirs, Map& kirMap, MHCGenePool& mhcPool, bool hla); //for initialization of the population //works
 
 	//This is where all my troubles come from
 	Host(int loci_kir, int loci_mhc, vector<Gene>& mhcGenesParent, GenePool& mhcPool, bool dist,
@@ -123,7 +123,6 @@ public:
 	vector<Gene> mhcGenes;
 	vector<KIRGene> kirGenes;
 	enum state{susceptible, incubating, acute, chronic, immune};
-
 	Virus pathogen;
 protected:
 
