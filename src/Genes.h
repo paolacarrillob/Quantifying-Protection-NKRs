@@ -12,6 +12,7 @@
 #include <fstream>
 #include <sstream>
 
+#include <list>
 #include <map>
 #include <utility>
 

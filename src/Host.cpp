@@ -18,6 +18,7 @@ void Virus::SetViralParameters(double _downregulation, double _decoy, double _vi
 	mutationRateDownregulation = _downregulation;
 	mutationRateDecoy = _decoy;
 	viralLoad = _viralLoad;
+	originalViralLoad = _viralLoad;
 	lifeTimeVirus = _lifeTimeVirus;
 	switch(virus_type)
 	{
@@ -66,11 +67,20 @@ Virus & Virus::Copy(Virus& rhsVirus)
 	this->mutationRateDecoy = rhsVirus.mutationRateDecoy;
 	this->lifeTimeVirus = rhsVirus.lifeTimeVirus;
 	this->viralLoad = rhsVirus.viralLoad;
+	this->originalViralLoad = rhsVirus.originalViralLoad;
 	this->virusType = rhsVirus.virusType;
 	//this->mhcDecoy.SetGeneID(rhsVirus.mhcDecoy.GetGeneID());
 	this->mhcDecoy.Copy(rhsVirus.mhcDecoy);
 	this->onlyAcute = rhsVirus.onlyAcute;
 	return *this;
+}
+
+bool Virus :: operator == (Virus& rhs)
+{
+	if(this->virusType == rhs.virusType)
+		return true;
+	else
+		return false;
 }
 
 bool Virus :: IsDownregulatingMHC()
@@ -99,7 +109,7 @@ bool Virus :: IsWildType()
 
 void Virus::SaveBackupVirus(fstream& file)
 {
-	file << mutationRateDownregulation << "\t" << mutationRateDecoy << "\t" << lifeTimeVirus << "\t" << viralLoad <<"\t" << virusType <<"\t" << mhcDecoy.GetGeneID()<< "\t"<<onlyAcute <<"\t";
+	file << mutationRateDownregulation << "\t" << mutationRateDecoy << "\t" << lifeTimeVirus << "\t" << viralLoad <<"\t" <<originalViralLoad<<"\t"<< virusType <<"\t" << mhcDecoy.GetGeneID()<< "\t"<<onlyAcute <<"\t";
 }
 
 string Virus::RestoreVirus(stringstream& svline)
@@ -110,6 +120,7 @@ string Virus::RestoreVirus(stringstream& svline)
 	svline >> mutationRateDecoy;
 	svline >> lifeTimeVirus;
 	svline >> viralLoad;
+	svline >> originalViralLoad;
 	svline >> type;
 	switch(type)
 	{
@@ -126,7 +137,7 @@ string Virus::RestoreVirus(stringstream& svline)
 
 void Virus :: SaveParametersVirus(fstream& outfile)
 {
-	outfile << virusType << "\t" << viralLoad <<"\t" << mhcDecoy.GetGeneID() <<"\t"<<onlyAcute<<"\t";
+	outfile << virusType << "\t" << viralLoad <<"\t" <<originalViralLoad << "\t"<< mhcDecoy.GetGeneID() <<"\t"<<onlyAcute<<"\t";
 }
 
 
@@ -342,15 +353,10 @@ void Host::InitializeHostParameters(double mutationRate, bool _tuning, int loci_
 	dead = false;
 	mutationRateHost = mutationRate;
 	tuning = _tuning;
+	mainInfectionType = susceptible;
 	LOCI_KIR = loci_kir;
 	LOCI_MHC = loci_mhc;
-	infectionType = susceptible;
-	infectionTime = 0.0;
-	immunityTime = 0.0;
 	viralDeathRate = 0.0;
-	clearanceTime = 0.0;
-	ageInfection = 0.0;
-	ageClearance = 0.0;
 	age = 0.0;
 	inhibitoryKIRs = 0;
 	activatingKIRs = 0;
@@ -564,14 +570,14 @@ Host& Host:: Copy(Host& rightHandSideHost)
 	this->age = rightHandSideHost.age;
 	this->LOCI_KIR = rightHandSideHost.LOCI_KIR;
 	this->LOCI_MHC = rightHandSideHost.LOCI_MHC;
-	this->infectionType = rightHandSideHost.infectionType;
-	this->infectionTime = rightHandSideHost.infectionTime;
-	this->immunityTime = rightHandSideHost.immunityTime;
+	this->mainInfectionType = rightHandSideHost.mainInfectionType;
+	//this->infectionTime = rightHandSideHost.infectionTime;
+	//this->immunityTime = rightHandSideHost.immunityTime;
 	this->mutationRateHost = rightHandSideHost.mutationRateHost;
 	this->viralDeathRate = rightHandSideHost.viralDeathRate;
-	this->clearanceTime = rightHandSideHost.clearanceTime;
-	this->ageInfection = rightHandSideHost.ageInfection;
-	this->ageClearance = rightHandSideHost.ageClearance;
+	//this->clearanceTime = rightHandSideHost.clearanceTime;
+	//this->ageInfection = rightHandSideHost.ageInfection;
+	//this->ageClearance = rightHandSideHost.ageClearance;
 	this->inhibitoryKIRs = rightHandSideHost.inhibitoryKIRs;
 	this->activatingKIRs = rightHandSideHost.activatingKIRs;
 
@@ -586,13 +592,16 @@ Host& Host:: Copy(Host& rightHandSideHost)
 		this->kirGenes.push_back(rightHandSideHost.kirGenes.at(i));
 	}
 
+	//copy infections TO DO!!!!!!!!!!!!!!!!!!1
+
+
+
 	return *this; // returns self-reference so cascaded assignment works
 }
 
 double Host :: GetIntrinsicDeathRate(vector<double>& rates)
 {
 	int a = int(ceil(age));
-	//cout << a<<"|"<<age <<"\t";
 	if(a > rates.size())
 		cout << a << "|" << rates.size() << "age" << "ERROR in the deathrate!!!!" <<endl;
 
@@ -603,267 +612,101 @@ double Host :: GetIntrinsicDeathRate(vector<double>& rates)
 double Host :: GetAgeDependentBirthRate(vector<double>& rates)
 {
 	int a = int(ceil(age));
-	//cout << a<<"|"<<age <<"\t";
 	if(a > rates.size())
 		cout << a << "|" << rates.size() << "age" << "ERROR in the birth rate!!!!" <<endl;
 	ageDependentBirthrate = rates.at(a);
 	return ageDependentBirthrate;
 }
 
-/*This functions return the infection type of the host*/
-bool Host :: IsSusceptible()
+/*this function sets the vector of infections*/
+void Host::InfectWith(Infection& new_virus, double simulationTime) //function of the host receiving a new virus
 {
-	if (infectionType == susceptible)
-		return true;
-	else
-		return false;
-	//return (infection == susceptible);
-}
-bool Host :: IsImmune()
-{
-	if (infectionType == immune)
-		return true;
-	else
-		return false;
-}
-bool Host:: IsIncubating()
-{
-	if(infectionType == incubating)
-		return true;
-	else
-		return false;
-}
-bool Host :: IsAcuteInfected()
-{
-	if (infectionType == acute)
-		return true;
-	else
-		return false;
-}
-bool Host :: IsChronicInfected()
-{
-	if(infectionType == chronic)
-		return true;
-	else
-		return false;
-}
+	Virus newVirus;
+	newVirus.Copy(new_virus.pathogen);
 
-/*This function sets the pathogen parameters as infectious*/
-void Host :: InfectWith(Virus& nastyVirus, double simulationTime)
-{
-	if(infectionType == susceptible||infectionType == incubating)
+	Infection newInfection;
+	list<Infection>::iterator it;
+	list<Infection>::iterator end = infections.end();
+
+	if(!IsInfected()) // if the host is NOT infected yet
 	{
-		pathogen.Copy(nastyVirus);
-		infectionTime = simulationTime;
-		ageInfection = age;
-		if(pathogen.IsOnlyAcute())
-			immunityTime = 80;
-		else
-			immunityTime = 10;
+		newInfection.TransmitInfection(newVirus,simulationTime);//set the parameters to the new infection!
+		infections.push_back(newInfection);
+	}
+	else //but if the host IS infected with some viruses
+	{
+		int howManyInfections = 0;
+		for (it = infections.begin(); it != end; it++)
+		{
+			if(!it->IsPathogenNew(newVirus)) // if the virus is already there (i.e. as incubating, acute, chronic or immune) ignore it
+				continue;
+			else //but if it's not the same, keep track of how many infections are different from the new one
+				howManyInfections++;
+		}
+
+		if(howManyInfections == infections.size()) // if the new virus is different from ALL infections present in that host
+		{
+			newInfection.TransmitInfection(newVirus,simulationTime);//set the parameters to the new infection!
+			infections.push_back(newInfection);
+		}
 	}
 }
 
-/*This function changes the infection type of the host according to the time of infection*/
-void Host::SetInfectionType(double simulationTime, double lifeTimeVirus)
+int Host :: IsInfected() //this functions basically counts whether there is more than zero infections!
 {
-	//infection has started but has not been cleared yet:
-	if(infectionTime > 0.0 && clearanceTime == 0.0)
-	{
-		//check first if the host is in the infection period (i.e. between 1-4 weeks)
-		if((simulationTime-infectionTime)<=1.0*WEEK)
-			infectionType = incubating;
-
-		if((simulationTime-infectionTime)>1.0*WEEK && (simulationTime-infectionTime)<1.0*WEEK+4.0*lifeTimeVirus)
-		{
-			viralDeathRate = pathogen.GetViralLoad();
-			infectionType = acute;
-		}
-		if((simulationTime -infectionTime) > 1.0*WEEK+ 4.0*lifeTimeVirus)
-		{
-			if(pathogen.IsOnlyAcute())
-				dead = true;
-			else
-			{
-				viralDeathRate = 0.6*pathogen.GetViralLoad();
-				infectionType = chronic;
-			}
-		}
-	}
-
-	if(infectionTime == 0.0 && clearanceTime > 0.0)
-	{
-
-		if(simulationTime - clearanceTime<ImmunityTime(immunityTime,0.5)*YEAR)
-		{
-			infectionType = immune;
-		}
-		else
-		{
-			infectionType = susceptible;
-			clearanceTime = 0.0;
-		}
-	}
-
-	if(infectionTime == 0.0 && clearanceTime == 0.0)
-		infectionType = susceptible;
+	return infections.size();
 }
 
-void Host :: UpdateParameters(double timeStep, double simulationTime, double lifeTimeVirus)
+/*This functions sets each host with an infection type according to the state of his infections*/
+int Host::GetMainInfectionType()
+{
+	list<Infection>::iterator it;
+	int chronicInfections = 0;
+	int recoveredInfections = 0;
+
+	for(it = infections.begin(); it!= infections.end(); it++)
+	{
+		int type = it->GetInfectionType();
+		switch(type)
+		{
+		case 0:{mainInfectionType = susceptible;}break; //is incubating... so is not really infectious yet!
+		case 1:
+		{
+			mainInfectionType = acute;
+			return mainInfectionType;//if only one of them is acute return it as acute and leave the loop!
+		}break;
+		case 2:{chronicInfections++;} break; // is chronic
+		case 3:{recoveredInfections++;} break; //is memory
+		case 4:{mainInfectionType = susceptible;}break;//is cleared
+		}
+	}
+	if(chronicInfections > 0)
+		mainInfectionType = chronic;
+	else
+	{
+		if(recoveredInfections > 0)
+			mainInfectionType = immune;
+	}
+	return mainInfectionType;
+}
+
+
+void Host :: UpdateParameters(double timeStep, double simulationTime)
 {
 	age += (timeStep/YEAR);
-	SetInfectionType(simulationTime, lifeTimeVirus);
-
-}
-
-void Host::ClearInfection(double simulationTime)
-//void Host::ClearInfection(double simulationTime, int specificity)
-{
-	if(pathogen.IsWildType()) //wildtype virus, regular infection
+	//update (get) all the information for each infection
+	list<Infection>::iterator it;
+	for(it = infections.begin(); it != infections.end(); it ++)
 	{
-		if(RandomNumberDouble()<0.85)
-		{
-			//cout <<"wild-type" <<endl;
-			ResetInfection(simulationTime);
-			return;
-		}
-	}
-	if (pathogen.IsDownregulatingMHC()) //missing self
-	{
-		//change the model and make functional KIRs important also for the recognition of MHC downregulation
+		it->SetInfectionType(simulationTime);
+		if(it->IsCured()) //if the infection has been cleared again,remove it from the infections list!
+			infections.erase(it);
 
-		if(inhibitoryKIRs) //only if there is at least one functional INHIBITORY KIR, clear the infection
-		{
-			if(RandomNumberDouble()<0.5)
-			{
-				//cout <<"mhc down" <<endl;
-				ResetInfection(simulationTime);
-				return;
-			}
-		}
-	}
-	if(pathogen.IsStealingDecoy()) //decoy+missing self
-	{
-		int inhibiting_kirs_recognizing_decoy = 0;
-		int activating_kirs_recognizing_decoy = 0;
-		vector<KIRGene>::iterator kirIt;
-		//cout <<"decoy | ";
-		for(kirIt = kirGenes.begin(); kirIt !=kirGenes.end(); kirIt ++)
-		{
-			if(/*!kirGenes.at(i).IsFunctional() || */!kirIt->IsExpressed()) //ignore KIRs that are not functional / expressed!
-				continue;
-			else
-			{
-				int score = kirIt->BindMolecule(pathogen.mhcDecoy); //check if they bind to the decoy!
-				if(score>=kirIt->GetGeneSpecificity()) //receptors binds to decoy
-				{
-					//now check what kind of receptors we have
-					if(kirIt->IsInhibitory()) //if it is inhibiting
-					{
-						inhibiting_kirs_recognizing_decoy++;//keep track of how many KIRs are recognizing decoys
-						//cout <<"inhibiting| "<<inhibiting_kirs_recognizing_decoy;
-					}
-
-					if(kirIt->IsActivating()) //if it is activating
-					{
-						activating_kirs_recognizing_decoy ++;//keep track of how many KIRs are recognizing decoys
-						//cout <<"activating| "<<activating_kirs_recognizing_decoy;
-					}
-				}
-			}
-		}
-
-		/*if(inhibitoryKIRs && !activatingKIRs) //if that host has ONLY inhibitory receptors
-		{
-			ClearDecoyWithInhibitoryOnly(inhibiting_kirs_recognizing_decoy, simulationTime);
-		}*/
-
-		if(!inhibitoryKIRs && activatingKIRs) //if that host has ONLY activating receptors
-		{
-			ClearDecoyWithActivatingOnly(activating_kirs_recognizing_decoy, simulationTime);
-		}
-
-		if(inhibitoryKIRs && activatingKIRs) //if that host has both types of receptors
-		{
-			ClearDecoyWithActivatingAndInhibitory(inhibiting_kirs_recognizing_decoy, activating_kirs_recognizing_decoy, simulationTime);
-		}
+		if(it->GetViralLoad() > viralDeathRate)
+			viralDeathRate = it->GetViralLoad();
+		dead=it->GetDeadFlag();
 	}
 }
-
-void Host::ResetInfection(double simulationTime)
-{
-	Virus deadVirus;
-	viralDeathRate = 0.0;
-	pathogen.Copy(deadVirus);
-	infectionTime = 0.0;
-	clearanceTime = simulationTime;
-	ageClearance = age;
-}
-
-void Host :: ClearDecoyWithInhibitoryOnly(int inhibiting_signal, double simulationTime)
-{
-	//cout <<"clearing decoy: "<<inhibitoryKIRs << "|"<< activatingKIRs << endl;
-	if(!inhibiting_signal) //if there is no inhibiting signal, receptor didn't bind to the decoy: protection like MHC down
-	{
-		if(RandomNumberDouble()<0.5)
-			ResetInfection(simulationTime);
-	}
-}
-
-void Host :: ClearDecoyWithActivatingOnly(int activating_signal, double simulationTime)
-{
-	//cout <<"clearing decoy: "<<inhibitoryKIRs << "|"<< activatingKIRs << endl;
-	if(activating_signal) //if activating receptor recognizes decoy, but there are no inhibitory receptors, the virus still escapes response of the T-cells
-	{                       // protection as with an MHC-downregulating one
-		if(RandomNumberDouble()<0.5)
-			ResetInfection(simulationTime);
-	}
-
-}
-
-void Host ::ClearDecoyWithActivatingAndInhibitory(int inhibiting_signal, int activating_signal, double simulationTime)
-{
-	//if functional KIRs recognize MHC down
-	//cout <<"clearing decoy: "<<inhibitoryKIRs << "|"<< activatingKIRs << endl;
-	if(inhibitoryKIRs > 0 && activating_signal) //and there is enough activating signal
-	{
-		if(!inhibiting_signal) //best protection
-		{
-			if(RandomNumberDouble()<0.5)
-			{
-				//cout <<"best protection!" <<endl;
-				ResetInfection(simulationTime);
-				return;
-			}
-		}
-		if(inhibiting_signal) //good protection
-		{
-			if(RandomNumberDouble()<0.5)
-			{
-				//cout <<"good protection!" <<endl;
-				ResetInfection(simulationTime);
-				return;
-			}
-		}
-	}
-	//if functional KIRs recognize MHC down
-	if(inhibitoryKIRs > 0 && !activating_signal)	//but there is not enough activation OR only inhibitory receptors!
-	{
-		//check whether the host is fooled or not
-		if(!inhibiting_signal) // if no inhibitory receptor recognizes the decoy:
-		{                                             //same as MHC downregulation p= 0.5
-			if(RandomNumberDouble()<0.5)
-			{
-				//cout <<"same as mhc!" <<endl;
-				ResetInfection(simulationTime);
-				return;
-			}
-		}
-		//cout <<"screwed!!!!!!!!!" <<endl;
-	}
-}
-
-
-
 
 //functions for SAVING PARAMETERS, BACKUP, etc
 /*this function saves each locus -> to keep track of KIR and MHC diversity*/
@@ -887,8 +730,8 @@ void Host::SaveGenes(fstream& outfile)
 
 void Host ::SaveParameters(fstream& outfile)
 {
-	outfile <<age << "\t" << infectionTime/YEAR <<"\t" << infectionType << "\t"<< viralDeathRate<<"\t"<<ageInfection << "\t"<< ageClearance<<"\t";
-	pathogen.SaveParametersVirus(outfile);
+	//outfile <<age << "\t" << infectionTime/YEAR <<"\t" << infectionType << "\t"<< viralDeathRate<<"\t"<<ageInfection << "\t"<< ageClearance<<"\t";
+	//pathogen.SaveParametersVirus(outfile);
 	outfile <<  "\n";
 }
 
@@ -901,20 +744,19 @@ void Host :: SaveAgeDyingHost(fstream& outfile)
 	{
 		kirIt->SaveGenes(outfile);
 	}
-	pathogen.SaveParametersVirus(outfile);
-	outfile << infectionType << "\t"<< ageInfection << "\t"<< ageClearance<<"\t";
+	//pathogen.SaveParametersVirus(outfile);
+	//outfile << infectionType << "\t"<< ageInfection << "\t"<< ageClearance<<"\t";
 }
-
 
 void Host::SaveBackupHost(fstream& backupFile)
 {
 	//cout << "saving hosts..."<<endl;
 	vector<KIRGene>::iterator kirIt;
 	vector<Gene>::iterator mhcIt;
-	backupFile << LOCI_KIR << "\t"<<LOCI_MHC<<"\t"<< age << "\t"<< infectionType<< "\t"<< infectionTime << "\t"<<clearanceTime << "\t"<<immunityTime << "\t"<< tuning << "\t"
-	<< dead << "\t"<< mutationRateHost << "\t"<< viralDeathRate << "\t"<<ageInfection <<"\t"<<ageClearance <<"\t"<<inhibitoryKIRs<<"\t"<<activatingKIRs<<"\t";
+	//backupFile << LOCI_KIR << "\t"<<LOCI_MHC<<"\t"<< age << "\t"<< infectionType<< "\t"<< infectionTime << "\t"<<clearanceTime << "\t"<<immunityTime << "\t"<< tuning << "\t"
+	//<< dead << "\t"<< mutationRateHost << "\t"<< viralDeathRate << "\t"<<ageInfection <<"\t"<<ageClearance <<"\t"<<inhibitoryKIRs<<"\t"<<activatingKIRs<<"\t";
 
-	pathogen.SaveBackupVirus(backupFile);
+	//pathogen.SaveBackupVirus(backupFile);
 
 	for(mhcIt = mhcGenes.begin(); mhcIt!=mhcGenes.end(); mhcIt++)
 	{
@@ -937,28 +779,28 @@ void Host::RestoreHost(const string& sline)
 	int inf;
 	ssline >> inf;
 	//cout <<"inf:  "<<inf <<endl;
-	switch(inf)
+/*	switch(inf)
 	{
 	case 0:{infectionType = susceptible;}break;
 	case 1:(infectionType = incubating);break;
 	case 2:{infectionType = acute;}break;
 	case 3:{infectionType = chronic;}break;
 	case 4:{infectionType = immune;}break;
-	}
+	}*/
 	//cout << "infection Type: "<<infectionType <<endl;
-	ssline >> infectionTime;
-	ssline >> clearanceTime;
-	ssline >> immunityTime;
+	//ssline >> infectionTime;
+	//ssline >> clearanceTime;
+	//ssline >> immunityTime;
 	ssline >> tuning;
 	ssline >> dead;
 	ssline >> mutationRateHost;
 	ssline >> viralDeathRate;
-	ssline >> ageInfection;
-	ssline >> ageClearance;
+//	ssline >> ageInfection;
+	//ssline >> ageClearance;
 	ssline >> inhibitoryKIRs;
 	ssline >> activatingKIRs;
 //	cout << LOCI_KIR<<"\t"<<age << "\t"<< infectionType<< "\t"<< infectionTime << "\t"<<clearanceTime << "\t"<< tuning << "\t"<< dead << "\t"<< mutationRateHost << "\t"<< viralDeathRate << "\t"<<endl;
-	string geneString = pathogen.RestoreVirus(ssline);
+/*	string geneString = pathogen.RestoreVirus(ssline);
 	ssline.str() = geneString;
 
 	for(int i=0; i<LOCI_MHC*TWO; i++)
@@ -977,7 +819,260 @@ void Host::RestoreHost(const string& sline)
 //		cout <<"id:\t"<<kir.GetGeneID()<<" func:\t"<<kir.IsFunctional()<<" kirSize: "<< kirGenes.size()<<endl;
 //		cout <<ssline.str()<<endl;
 		ssline.str() = geneString;
+	}*/
+}
+
+void Host::ClearInfection(double simulationTime, Infection& _infection)
+//void Host::ClearInfection(double simulationTime, int specificity)
+{
+	int infectionType = _infection.GetInfectionType();
+	switch (infectionType)
+	{
+	case 0: //if it's a wild-type virus
+	{
+		if(RandomNumberDouble()<0.85)
+			_infection.ResetInfection(simulationTime);
+	}break;
+	case 1://if it's an mHC downregulating virus
+	{
+		if(inhibitoryKIRs) //only if there is at least one functional INHIBITORY KIR, clear the infection
+		{
+			if(RandomNumberDouble()<0.5)
+				_infection.ResetInfection(simulationTime);
+		}
+	}break;
+	case 2: //if it's a decoy virus
+	{
+		int inhibiting_kirs_recognizing_decoy = 0;
+		int activating_kirs_recognizing_decoy = 0;
+
+		vector<KIRGene>::iterator kirIt;
+		//cout <<"decoy | ";
+		for(kirIt = kirGenes.begin(); kirIt !=kirGenes.end(); kirIt ++)
+		{
+			if(!kirIt->IsExpressed()) //ignore KIRs that are not functional / expressed!
+				continue;
+			else
+			{
+				int score = kirIt->BindMolecule(_infection.pathogen.mhcDecoy); //check if they bind to the decoy!
+				if(score>=kirIt->GetGeneSpecificity()) //receptors binds to decoy
+				{
+					//now check what kind of receptors we have
+					if(kirIt->IsInhibitory()) //if it is inhibiting
+					{
+						inhibiting_kirs_recognizing_decoy++;//keep track of how many KIRs are recognizing decoys
+						//cout <<"inhibiting| "<<inhibiting_kirs_recognizing_decoy;
+					}
+
+					if(kirIt->IsActivating()) //if it is activating
+					{
+						activating_kirs_recognizing_decoy ++;//keep track of how many KIRs are recognizing decoys
+						//cout <<"activating| "<<activating_kirs_recognizing_decoy;
+					}
+				}
+			}
+		}
+
+		ClearDecoyWithActivatingAndInhibitory(inhibiting_kirs_recognizing_decoy, activating_kirs_recognizing_decoy, simulationTime, _infection);
+
+		/*This is with different of protection depending which receptors we have. Above is the
+		 *same... I don't completely agree, but let's see what happens! -> try out the new one!
+		 *
+		 * if(inhibitoryKIRs && !activatingKIRs) //if that host has ONLY inhibitory receptors
+		{
+			ClearDecoyWithInhibitoryOnly(inhibiting_kirs_recognizing_decoy, simulationTime);
+		}
+
+		if(!inhibitoryKIRs && activatingKIRs) //if that host has ONLY activating receptors
+		{
+			ClearDecoyWithActivatingOnly(activating_kirs_recognizing_decoy, simulationTime);
+		}
+
+		if(inhibitoryKIRs && activatingKIRs) //if that host has both types of receptors
+		{
+			ClearDecoyWithActivatingAndInhibitory(inhibiting_kirs_recognizing_decoy, activating_kirs_recognizing_decoy, simulationTime);
+		}*/
+	}break;
 	}
-//	cout << "halloooooooooooooooooooooooooooo"<<endl;
+}
+
+void Host :: ClearDecoyWithInhibitoryOnly(int inhibiting_signal, double simulationTime, Infection& _infection)
+{
+	//cout <<"clearing decoy: "<<inhibitoryKIRs << "|"<< activatingKIRs << endl;
+	if(!inhibiting_signal) //if there is no inhibiting signal, receptor didn't bind to the decoy: protection like MHC down
+	{
+		if(RandomNumberDouble()<0.5)
+			_infection.ResetInfection(simulationTime);
+	}
+}
+
+void Host :: ClearDecoyWithActivatingOnly(int activating_signal, double simulationTime, Infection& _infection)
+{
+	//cout <<"clearing decoy: "<<inhibitoryKIRs << "|"<< activatingKIRs << endl;
+	if(activating_signal) //if activating receptor recognizes decoy, but there are no inhibitory receptors, the virus still escapes response of the T-cells
+	{                       // protection as with an MHC-downregulating one
+		if(RandomNumberDouble()<0.5)
+			_infection.ResetInfection(simulationTime);
+	}
 
 }
+
+void Host ::ClearDecoyWithActivatingAndInhibitory(int inhibiting_signal, int activating_signal, double simulationTime, Infection& _infection)
+{
+	//if functional KIRs recognize MHC down
+	//cout <<"clearing decoy: "<<inhibitoryKIRs << "|"<< activatingKIRs << endl;
+	if(inhibitoryKIRs > 0 && activating_signal) //and there is enough activating signal
+	{
+		if(!inhibiting_signal) //best protection
+		{
+			if(RandomNumberDouble()<0.5)
+			{
+				//cout <<"best protection!" <<endl;
+				_infection.ResetInfection(simulationTime);
+				return;
+			}
+		}
+		if(inhibiting_signal) //good protection
+		{
+			if(RandomNumberDouble()<0.5)
+			{
+				//cout <<"good protection!" <<endl;
+				_infection.ResetInfection(simulationTime);
+				return;
+			}
+		}
+	}
+	//if functional KIRs recognize MHC down
+	if(inhibitoryKIRs > 0 && !activating_signal)	//but there is not enough activation OR only inhibitory receptors!
+	{
+		//check whether the host is fooled or not
+		if(!inhibiting_signal) // if no inhibitory receptor recognizes the decoy:
+		{                                             //same as MHC downregulation p= 0.5
+			if(RandomNumberDouble()<0.5)
+			{
+				//cout <<"same as mhc!" <<endl;
+				_infection.ResetInfection(simulationTime);
+				return;
+			}
+		}
+		//cout <<"screwed!!!!!!!!!" <<endl;
+	}
+}
+
+
+//FUNCTIONS OF CLASS INFECTION
+Infection::Infection()
+{
+	SetInfectionParameters(cleared);
+}
+
+Infection::Infection(Virus& _virus)
+{
+	pathogen.Copy(_virus);
+	SetInfectionParameters(cleared);
+
+}
+
+void Infection :: SetInfectionParameters(state _type)
+{
+	infectionType = _type;
+	infectionTime = 0.0;
+	immunityTime = 0.0;
+	clearanceTime = 0.0;
+	deadFlagForHost = false;
+	//ageInfection = 0.0;
+	//ageClearance = 0.0;
+}
+
+/*This function sets the pathogen parameters as infectious*/
+void Infection::TransmitInfection(Virus& nastyInfection, double simulationTime)
+{
+	pathogen.Copy(nastyInfection); //infect it with the pathogen
+	pathogen.SetViralLoad(pathogen.GetOriginalViralLoad());//get the original one for a new infection being transmission!
+	infectionTime = simulationTime;
+	if(pathogen.IsOnlyAcute())
+		immunityTime = 80;
+	else
+		immunityTime = 10;
+}
+
+bool Infection :: IsPathogenNew(Virus& _newVirus)
+{
+	if(pathogen == _newVirus) //if the host is already infected with the same virus
+		return false; //don't infect it
+	else //but if it is a different one
+		return true;
+}
+
+bool Infection::IsCured()
+{
+	if(infectionType == cleared)
+		return true;
+	else
+		return false;
+}
+
+void Infection::ResetInfection(double simulationTime)
+{
+	//set the viral load to zero, but keep the viral type to keep track of which infections is still present in the host!
+	pathogen.SetViralLoad(0.0);
+	infectionTime = 0.0;
+	clearanceTime = simulationTime;
+}
+
+
+/*This function changes the infection type of the host according to the time of infection*/
+void Infection::SetInfectionType(double simulationTime)
+{
+	//infection has started but has not been cleared yet:
+	if(infectionTime > 0.0 && clearanceTime == 0.0)
+	{
+		//check first if the host is in the infection period (i.e. between 1-4 weeks)
+		if((simulationTime-infectionTime)<=1.0*WEEK)
+			infectionType = incubating;
+
+		if((simulationTime-infectionTime)>1.0*WEEK && (simulationTime-infectionTime)<1.0*WEEK+4.0*WEEK*pathogen.GetLifeTimeVirus())
+		{
+			//viralDeathRate = pathogen.GetViralLoad();STILL NEED TO IMPLEMENT THIS IN THE HOST!!!!!!!!
+			infectionType = acute;
+		}
+		if((simulationTime -infectionTime) > 1.0*WEEK+ 4.0*WEEK*pathogen.GetLifeTimeVirus())
+		{
+			if(pathogen.IsOnlyAcute())
+				deadFlagForHost = true;//STILL NEED TO IMPLEMENT THIS IN THE HOST!!!!!!!!
+			else
+			{
+				pathogen.SetViralLoad(0.6*pathogen.GetViralLoad());// STILL NEED TO IMPLEMENT THIS IN THE HOST!!!!!!!!
+				infectionType = chronic;
+			}
+		}
+	}
+
+	if(infectionTime == 0.0 && clearanceTime > 0.0)
+	{
+
+		if(simulationTime - clearanceTime < ImmunityTime(immunityTime,0.5)*YEAR)
+		{
+			infectionType = memory;
+		}
+		else
+		{
+			infectionType = cleared;
+			clearanceTime = 0.0;
+		}
+	}
+
+	if(infectionTime == 0.0 && clearanceTime == 0.0)
+	{
+		Virus deadVirus;
+		pathogen.Copy(deadVirus);
+		infectionType = cleared;
+	}
+}
+
+
+
+/*
+ * to do:
+ * write down in the file how many infections the host  has
+ */

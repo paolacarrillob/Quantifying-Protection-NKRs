@@ -24,8 +24,12 @@ public:
 	enum type{wildType, downregulating, decoy};
 
 	Virus& Copy(Virus& rhsVirus);//works
+	bool operator ==(Virus& rhs);
+
 	double GetLifeTimeVirus()const{return lifeTimeVirus;}
 	double GetViralLoad()const{return viralLoad;}
+	double GetOriginalViralLoad()const{return originalViralLoad;}
+	void SetViralLoad(double vl){viralLoad=vl;};
 	double GetRateDownregulation()const{return mutationRateDownregulation;}
 	double GetRateDecoy()const{return mutationRateDecoy;}
 	type GetVirusType()const{return virusType;}
@@ -48,11 +52,47 @@ protected:
 	double mutationRateDownregulation;
 	double mutationRateDecoy;
 	double viralLoad; //as the increase of the intrinsic death rate
+	double originalViralLoad;
 	double lifeTimeVirus; // time that a virus can live in one's organism
 	bool onlyAcute;
 
 };
 
+class Infection{
+public:
+	Infection();
+	Infection(Virus& _virus);
+	virtual ~Infection(){};
+
+	enum state{incubating, acute, chronic, memory, cleared};
+
+
+	void SetInfectionParameters(state _type);
+	void ResetInfection(double simulationTime);
+	void SetInfectionType(double simulationTime);
+	double GetInfectionTime(){return infectionTime;};
+	double GetClearanceTime(){return clearanceTime;};
+	int GetInfectionType(){return infectionType;};
+	double GetViralLoad(){return pathogen.GetViralLoad();};
+	bool GetDeadFlag(){return deadFlagForHost;}
+	//Virus& GetVirus(){return pathogen;}
+
+	bool IsPathogenNew(Virus& _newVirus);
+	bool IsCured();
+	void TransmitInfection(Virus& nastyInfection, double simulationTime);
+
+	Virus pathogen;
+
+protected:
+
+	bool deadFlagForHost;
+    double infectionTime;
+    double clearanceTime;
+    int immunityTime;
+    double ageInfection;
+    double ageClearance;
+    state infectionType;
+};
 
 
 class Host {
@@ -65,13 +105,9 @@ public:
 	Host(int loci_kir, int loci_mhc, vector<Gene>& mhcGenesParent, GenePool& mhcPool, bool dist,
 			vector<KIRGene>& kirGenesMother, vector<KIRGene>& kirGenesFather, double _mutationRate,
 			bool _tuning,int numberOfExtraKirs, Map& kirMap, int mutationType);
-
-
-	//Host(int loci_kir, Gene* mhcGenesParent, int mhcGenePool, Gene* kirGenesMother, Gene* kirGenesFather, int specificity, double _mutationRate, bool _tuning); //for birth function
 	virtual ~Host(){};
 	void SetDead(){dead = true;}
 	bool IsDead()const{return dead;}
-//	bool IsHostToBeTuned()const{return tuning;}
 
 	void InitializeHostParameters(double mutationRate, bool _tuning, int kirloci,int loci_mhc);
 	void SetHostParameters(bool t, double mut, int inftyp, double inftim, double viraldeathm ,double clrtim);
@@ -79,6 +115,11 @@ public:
 	//void EducateKIRs(int specificity);//works
 	void MutateGenes(int mutationType, KIRGene& kir_hap2, Map& kirMap, GenePool& mhcPool);
 
+
+	void ClearInfection(double simulationTime, Infection& _infection);
+	void ClearDecoyWithInhibitoryOnly(int inhibiting_signal, double simulationTime, Infection& _infection);
+	void ClearDecoyWithActivatingOnly(int activating_signal, double simulationTime, Infection& _infection);
+	void ClearDecoyWithActivatingAndInhibitory(int inhibiting_signal, int activating_signal, double simulationTime, Infection& _infection);
 
 	void ExpressKIRs(int numberOfExpressedKirs);
 	double GetAge()const{return age;}
@@ -90,27 +131,18 @@ public:
 	double GetIntrinsicDeathRate(vector<double>& rates);
 	double GetAgeDependentBirthRate(vector<double>& rates);
 
-	bool IsSusceptible();
+	void InfectWith(Infection& nastyVirus, double simulationTime);
+	int IsInfected();
+	/*bool IsSusceptible();
 	bool IsImmune();
 	bool IsChronicInfected();
 	bool IsAcuteInfected();
-	bool IsIncubating();
+	bool IsIncubating();*/
 
-	void InfectWith(Virus& nastyVirus, double simulationTime);//works
-	void ResetInfection(double simulationTime);
-	void ClearInfection(double simulationTime);
-	void ClearDecoyWithInhibitoryOnly(int inhibiting_signal, double simulationTime);
-	void ClearDecoyWithActivatingOnly(int activating_signal, double simulationTime);
-	void ClearDecoyWithActivatingAndInhibitory(int inhibiting_signal, int activating_signal, double simulationTime);
-
-	void SetInfectionType(double simulationTime, double lifeTimeVirus);
-	double GetInfectionTime(){return infectionTime;};
-	double GetClearanceTime(){return clearanceTime;};
-	int GetInfectionType(){return infectionType;};
 	double GetMutationRate(){return mutationRateHost;};
-	double GetViralDeathRate(){return viralDeathRate;}
-
-	void UpdateParameters(double timeStep, double simulationTime,double lifeTimeVirus);//works
+	double GetViralDeathRate(){return viralDeathRate;};
+	int GetMainInfectionType();
+	void UpdateParameters(double timeStep, double simulationTime);//works
 	void SaveGenes(fstream& outfile);//works
 	void SaveParameters(fstream& outfile);//works
 	void SaveAgeDyingHost(fstream& outfile);
@@ -118,12 +150,11 @@ public:
 	void SaveBackupHost(fstream& file);//works
 	void RestoreHost(const string& sline);//works
 
-	//Gene mhcGenes[LOCI_MHC][TWO];
-	//Gene kirGenes[LOCI_KIR][TWO];
 	vector<Gene> mhcGenes;
 	vector<KIRGene> kirGenes;
-	enum state{susceptible, incubating, acute, chronic, immune};
-	Virus pathogen;
+	list<Infection> infections;
+	enum state{susceptible, acute, chronic, immune};
+
 protected:
 
 	int LOCI_KIR;
@@ -131,24 +162,14 @@ protected:
 	double age;
 	bool dead;
 	bool tuning;
-//	double tuning_rate;
+	state mainInfectionType;
 	double mutationRateHost;
 
 	double intrinsicDeathRate;
 	double ageDependentBirthrate;
 	double viralDeathRate;
-    state infectionType;
-
-    double infectionTime;
-    double clearanceTime;
-    int immunityTime;
-    double ageInfection;
-    double ageClearance;
-
     int inhibitoryKIRs; //number of FUNTIONAL inhibitory / activating receptors
     int activatingKIRs;
-    //int MHCsearchinPool;
-    //int functionalKIRs;
 };
 
 #endif /* HOST_H_ */

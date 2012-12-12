@@ -206,26 +206,34 @@ void World::Infect(int index)
 			while (randomindex == index)
 				randomindex=RandomNumber(0,shuffledHosts.size()-1);
 			//check whether partner is infectious
-			if(hosts.at(randomindex).IsSusceptible() || hosts.at(randomindex).IsImmune())
+
+			//if(hosts.at(randomindex).IsSusceptible() || hosts.at(randomindex).IsImmune())
+			if(!hosts.at(randomindex).IsInfected())
 				continue;
 			//transmit the virus according to the type of infection
 			else
 			{
-				if(hosts.at(randomindex).IsAcuteInfected())
+				int infectionState = hosts.at(randomindex).GetMainInfectionType();
+				switch (infectionState)
+				{
+				case 1:
 				{
 					if(RandomNumberDouble()<transmissionRateAcute)
 					{
+						//get the acute virus
 						hosts.at(index).InfectWith(hosts.at(randomindex).pathogen, simulationTime);
-						return;
 					}
-				}
-				if(hosts.at(randomindex).IsChronicInfected())
+
+				}break;
+				case 2:
 				{
 					if(RandomNumberDouble()<transmissionRateChronic)
 					{
+						// get the chronic virus
 						hosts.at(index).InfectWith(hosts.at(randomindex).pathogen, simulationTime);
-						return;
 					}
+
+				}break;
 				}
 			}
 		}
