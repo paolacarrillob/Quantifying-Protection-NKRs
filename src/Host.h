@@ -32,7 +32,7 @@ public:
 	void SetViralLoad(double vl){viralLoad=vl;};
 	double GetRateDownregulation()const{return mutationRateDownregulation;}
 	double GetRateDecoy()const{return mutationRateDecoy;}
-	type GetVirusType()const{return virusType;}
+	int GetVirusType()const{return virusType;}
 //	void BuildDecoy(Gene *mhcGene);
 	void BuildDecoy(int mhcID);
 	void DownregulateMHC();
@@ -79,6 +79,7 @@ public:
 
 	bool IsPathogenNew(Virus& _newVirus);
 	bool IsCured();
+	bool IsAcute();
 	void TransmitInfection(Virus& nastyInfection, double simulationTime);
 
 	Virus pathogen;
@@ -115,12 +116,6 @@ public:
 	//void EducateKIRs(int specificity);//works
 	void MutateGenes(int mutationType, KIRGene& kir_hap2, Map& kirMap, GenePool& mhcPool);
 
-
-	void ClearInfection(double simulationTime, Infection& _infection);
-	void ClearDecoyWithInhibitoryOnly(int inhibiting_signal, double simulationTime, Infection& _infection);
-	void ClearDecoyWithActivatingOnly(int activating_signal, double simulationTime, Infection& _infection);
-	void ClearDecoyWithActivatingAndInhibitory(int inhibiting_signal, int activating_signal, double simulationTime, Infection& _infection);
-
 	void ExpressKIRs(int numberOfExpressedKirs);
 	double GetAge()const{return age;}
 	void SetAge(double number){age = number;}
@@ -131,8 +126,15 @@ public:
 	double GetIntrinsicDeathRate(vector<double>& rates);
 	double GetAgeDependentBirthRate(vector<double>& rates);
 
-	void InfectWith(Infection& nastyVirus, double simulationTime);
+	void InfectWith(Virus& nastyVirus, double simulationTime);
 	int IsInfected();
+	void ClearInfection(double simulationTime, Infection& _infection);
+	void ClearDecoyWithInhibitoryOnly(int inhibiting_signal, double simulationTime, Infection& _infection);
+	void ClearDecoyWithActivatingOnly(int activating_signal, double simulationTime, Infection& _infection);
+	void ClearDecoyWithActivatingAndInhibitory(int inhibiting_signal, int activating_signal, double simulationTime, Infection& _infection);
+	
+	Virus& GetAcuteInfection();
+	Virus& GetChronicInfection();
 	/*bool IsSusceptible();
 	bool IsImmune();
 	bool IsChronicInfected();

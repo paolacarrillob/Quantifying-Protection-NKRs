@@ -619,10 +619,10 @@ double Host :: GetAgeDependentBirthRate(vector<double>& rates)
 }
 
 /*this function sets the vector of infections*/
-void Host::InfectWith(Infection& new_virus, double simulationTime) //function of the host receiving a new virus
+void Host::InfectWith(Virus& newVirus, double simulationTime) //function of the host receiving a new virus
 {
-	Virus newVirus;
-	newVirus.Copy(new_virus.pathogen);
+	//Virus newVirus;
+	//newVirus.Copy(new_virus.pathogen);
 
 	Infection newInfection;
 	list<Infection>::iterator it;
@@ -657,7 +657,7 @@ int Host :: IsInfected() //this functions basically counts whether there is more
 	return infections.size();
 }
 
-/*This functions sets each host with an infection type according to the state of his infections*/
+/*This functions sets each host with an infection type according to the "main "state of all his infections*/
 int Host::GetMainInfectionType()
 {
 	list<Infection>::iterator it;
@@ -690,6 +690,176 @@ int Host::GetMainInfectionType()
 	return mainInfectionType;
 }
 
+
+void Host::ClearInfection(double simulationTime, Infection& _infection)
+//void Host::ClearInfection(double simulationTime, int specificity)
+{
+	int virusType = _infection.pathogen.GetVirusType();
+	switch (virusType)
+	{
+		case 0: //if it's a wild-type virus
+		{
+			if(RandomNumberDouble()<0.85)
+				_infection.ResetInfection(simulationTime);
+		}break;
+		case 1://if it's an mHC downregulating virus
+		{
+			if(inhibitoryKIRs) //only if there is at least one functional INHIBITORY KIR, clear the infection
+			{
+				if(RandomNumberDouble()<0.5)
+					_infection.ResetInfection(simulationTime);
+			}
+		}break;
+		case 2: //if it's a decoy virus
+		{
+			int inhibiting_kirs_recognizing_decoy = 0;
+			int activating_kirs_recognizing_decoy = 0;
+			
+			vector<KIRGene>::iterator kirIt;
+			//cout <<"decoy | ";
+			for(kirIt = kirGenes.begin(); kirIt !=kirGenes.end(); kirIt ++)
+			{
+				if(!kirIt->IsExpressed()) //ignore KIRs that are not functional / expressed!
+					continue;
+				else
+				{
+					int score = kirIt->BindMolecule(_infection.pathogen.mhcDecoy); //check if they bind to the decoy!
+					if(score>=kirIt->GetGeneSpecificity()) //receptors binds to decoy
+					{
+						//now check what kind of receptors we have
+						if(kirIt->IsInhibitory()) //if it is inhibiting
+						{
+							inhibiting_kirs_recognizing_decoy++;//keep track of how many KIRs are recognizing decoys
+							//cout <<"inhibiting| "<<inhibiting_kirs_recognizing_decoy;
+						}
+						
+						if(kirIt->IsActivating()) //if it is activating
+						{
+							activating_kirs_recognizing_decoy ++;//keep track of how many KIRs are recognizing decoys
+							//cout <<"activating| "<<activating_kirs_recognizing_decoy;
+						}
+					}
+				}
+			}
+			
+			ClearDecoyWithActivatingAndInhibitory(inhibiting_kirs_recognizing_decoy, activating_kirs_recognizing_decoy, simulationTime, _infection);
+			
+			/*This is with different of protection depending which receptors we have. Above is the
+			 *same... I don't completely agree, but let's see what happens! -> try out the new one!
+			 *
+			 * if(inhibitoryKIRs && !activatingKIRs) //if that host has ONLY inhibitory receptors
+			 {
+			 ClearDecoyWithInhibitoryOnly(inhibiting_kirs_recognizing_decoy, simulationTime);
+			 }
+			 
+			 if(!inhibitoryKIRs && activatingKIRs) //if that host has ONLY activating receptors
+			 {
+			 ClearDecoyWithActivatingOnly(activating_kirs_recognizing_decoy, simulationTime);
+			 }
+			 
+			 if(inhibitoryKIRs && activatingKIRs) //if that host has both types of receptors
+			 {
+			 ClearDecoyWithActivatingAndInhibitory(inhibiting_kirs_recognizing_decoy, activating_kirs_recognizing_decoy, simulationTime);
+			 }*/
+		}break;
+	}
+}
+
+void Host :: ClearDecoyWithInhibitoryOnly(int inhibiting_signal, double simulationTime, Infection& _infection)
+{
+	//cout <<"clearing decoy: "<<inhibitoryKIRs << "|"<< activatingKIRs << endl;
+	if(!inhibiting_signal) //if there is no inhibiting signal, receptor didn't bind to the decoy: protection like MHC down
+	{
+		if(RandomNumberDouble()<0.5)
+			_infection.ResetInfection(simulationTime);
+	}
+}
+
+void Host :: ClearDecoyWithActivatingOnly(int activating_signal, double simulationTime, Infection& _infection)
+{
+	//cout <<"clearing decoy: "<<inhibitoryKIRs << "|"<< activatingKIRs << endl;
+	if(activating_signal) //if activating receptor recognizes decoy, but there are no inhibitory receptors, the virus still escapes response of the T-cells
+	{                       // protection as with an MHC-downregulating one
+		if(RandomNumberDouble()<0.5)
+			_infection.ResetInfection(simulationTime);
+	}
+	
+}
+
+void Host ::ClearDecoyWithActivatingAndInhibitory(int inhibiting_signal, int activating_signal, double simulationTime, Infection& _infection)
+{
+	//if functional KIRs recognize MHC down
+	//cout <<"clearing decoy: "<<inhibitoryKIRs << "|"<< activatingKIRs << endl;
+	if(inhibitoryKIRs > 0 && activating_signal) //and there is enough activating signal
+	{
+		if(!inhibiting_signal) //best protection
+		{
+			if(RandomNumberDouble()<0.5)
+			{
+				//cout <<"best protection!" <<endl;
+				_infection.ResetInfection(simulationTime);
+				return;
+			}
+		}
+		if(inhibiting_signal) //good protection
+		{
+			if(RandomNumberDouble()<0.5)
+			{
+				//cout <<"good protection!" <<endl;
+				_infection.ResetInfection(simulationTime);
+				return;
+			}
+		}
+	}
+	//if functional KIRs recognize MHC down
+	if(inhibitoryKIRs > 0 && !activating_signal)	//but there is not enough activation OR only inhibitory receptors!
+	{
+		//check whether the host is fooled or not
+		if(!inhibiting_signal) // if no inhibitory receptor recognizes the decoy:
+		{                                             //same as MHC downregulation p= 0.5
+			if(RandomNumberDouble()<0.5)
+			{
+				//cout <<"same as mhc!" <<endl;
+				_infection.ResetInfection(simulationTime);
+				return;
+			}
+		}
+		//cout <<"screwed!!!!!!!!!" <<endl;
+	}
+}
+
+/*This functions returns the Virus of the acute infection*/
+Virus& Host :: GetAcuteInfection()
+{
+	list<Infection>:: iterator it;
+	int inf_type = 0;
+	for(it = infections.begin(); it!= infections.end(); it++)
+	{
+		inf_type = it->GetInfectionType();
+		if(inf_type != 1) //if it's not an acute infection
+			continue;
+		else //if it is, return the acute virus
+			return it->pathogen;
+	}
+}
+
+/*This functions returns a ramdonly chose chronic virus infection  !!!!!! WHAT IS HAPPENING TO THIS VECTOR???? SHALL I DELETE IT SOMEHOW????*/
+Virus& Host :: GetChronicInfection()
+{
+	vector<Virus> randomChronicInfections;
+	list<Infection>:: iterator it;
+	int inf_type = 0;
+	for(it = infections.begin(); it!= infections.end(); it++)
+	{
+		inf_type = it->GetInfectionType();
+		if(inf_type!=2) //if it's not chronic
+			continue;
+		else
+			randomChronicInfections.push_back(it->pathogen);
+	}
+	int random = RandomNumber(0,randomChronicInfections.size());
+	return randomChronicInfections.at(random);
+}
 
 void Host :: UpdateParameters(double timeStep, double simulationTime)
 {
@@ -822,143 +992,6 @@ void Host::RestoreHost(const string& sline)
 	}*/
 }
 
-void Host::ClearInfection(double simulationTime, Infection& _infection)
-//void Host::ClearInfection(double simulationTime, int specificity)
-{
-	int infectionType = _infection.GetInfectionType();
-	switch (infectionType)
-	{
-	case 0: //if it's a wild-type virus
-	{
-		if(RandomNumberDouble()<0.85)
-			_infection.ResetInfection(simulationTime);
-	}break;
-	case 1://if it's an mHC downregulating virus
-	{
-		if(inhibitoryKIRs) //only if there is at least one functional INHIBITORY KIR, clear the infection
-		{
-			if(RandomNumberDouble()<0.5)
-				_infection.ResetInfection(simulationTime);
-		}
-	}break;
-	case 2: //if it's a decoy virus
-	{
-		int inhibiting_kirs_recognizing_decoy = 0;
-		int activating_kirs_recognizing_decoy = 0;
-
-		vector<KIRGene>::iterator kirIt;
-		//cout <<"decoy | ";
-		for(kirIt = kirGenes.begin(); kirIt !=kirGenes.end(); kirIt ++)
-		{
-			if(!kirIt->IsExpressed()) //ignore KIRs that are not functional / expressed!
-				continue;
-			else
-			{
-				int score = kirIt->BindMolecule(_infection.pathogen.mhcDecoy); //check if they bind to the decoy!
-				if(score>=kirIt->GetGeneSpecificity()) //receptors binds to decoy
-				{
-					//now check what kind of receptors we have
-					if(kirIt->IsInhibitory()) //if it is inhibiting
-					{
-						inhibiting_kirs_recognizing_decoy++;//keep track of how many KIRs are recognizing decoys
-						//cout <<"inhibiting| "<<inhibiting_kirs_recognizing_decoy;
-					}
-
-					if(kirIt->IsActivating()) //if it is activating
-					{
-						activating_kirs_recognizing_decoy ++;//keep track of how many KIRs are recognizing decoys
-						//cout <<"activating| "<<activating_kirs_recognizing_decoy;
-					}
-				}
-			}
-		}
-
-		ClearDecoyWithActivatingAndInhibitory(inhibiting_kirs_recognizing_decoy, activating_kirs_recognizing_decoy, simulationTime, _infection);
-
-		/*This is with different of protection depending which receptors we have. Above is the
-		 *same... I don't completely agree, but let's see what happens! -> try out the new one!
-		 *
-		 * if(inhibitoryKIRs && !activatingKIRs) //if that host has ONLY inhibitory receptors
-		{
-			ClearDecoyWithInhibitoryOnly(inhibiting_kirs_recognizing_decoy, simulationTime);
-		}
-
-		if(!inhibitoryKIRs && activatingKIRs) //if that host has ONLY activating receptors
-		{
-			ClearDecoyWithActivatingOnly(activating_kirs_recognizing_decoy, simulationTime);
-		}
-
-		if(inhibitoryKIRs && activatingKIRs) //if that host has both types of receptors
-		{
-			ClearDecoyWithActivatingAndInhibitory(inhibiting_kirs_recognizing_decoy, activating_kirs_recognizing_decoy, simulationTime);
-		}*/
-	}break;
-	}
-}
-
-void Host :: ClearDecoyWithInhibitoryOnly(int inhibiting_signal, double simulationTime, Infection& _infection)
-{
-	//cout <<"clearing decoy: "<<inhibitoryKIRs << "|"<< activatingKIRs << endl;
-	if(!inhibiting_signal) //if there is no inhibiting signal, receptor didn't bind to the decoy: protection like MHC down
-	{
-		if(RandomNumberDouble()<0.5)
-			_infection.ResetInfection(simulationTime);
-	}
-}
-
-void Host :: ClearDecoyWithActivatingOnly(int activating_signal, double simulationTime, Infection& _infection)
-{
-	//cout <<"clearing decoy: "<<inhibitoryKIRs << "|"<< activatingKIRs << endl;
-	if(activating_signal) //if activating receptor recognizes decoy, but there are no inhibitory receptors, the virus still escapes response of the T-cells
-	{                       // protection as with an MHC-downregulating one
-		if(RandomNumberDouble()<0.5)
-			_infection.ResetInfection(simulationTime);
-	}
-
-}
-
-void Host ::ClearDecoyWithActivatingAndInhibitory(int inhibiting_signal, int activating_signal, double simulationTime, Infection& _infection)
-{
-	//if functional KIRs recognize MHC down
-	//cout <<"clearing decoy: "<<inhibitoryKIRs << "|"<< activatingKIRs << endl;
-	if(inhibitoryKIRs > 0 && activating_signal) //and there is enough activating signal
-	{
-		if(!inhibiting_signal) //best protection
-		{
-			if(RandomNumberDouble()<0.5)
-			{
-				//cout <<"best protection!" <<endl;
-				_infection.ResetInfection(simulationTime);
-				return;
-			}
-		}
-		if(inhibiting_signal) //good protection
-		{
-			if(RandomNumberDouble()<0.5)
-			{
-				//cout <<"good protection!" <<endl;
-				_infection.ResetInfection(simulationTime);
-				return;
-			}
-		}
-	}
-	//if functional KIRs recognize MHC down
-	if(inhibitoryKIRs > 0 && !activating_signal)	//but there is not enough activation OR only inhibitory receptors!
-	{
-		//check whether the host is fooled or not
-		if(!inhibiting_signal) // if no inhibitory receptor recognizes the decoy:
-		{                                             //same as MHC downregulation p= 0.5
-			if(RandomNumberDouble()<0.5)
-			{
-				//cout <<"same as mhc!" <<endl;
-				_infection.ResetInfection(simulationTime);
-				return;
-			}
-		}
-		//cout <<"screwed!!!!!!!!!" <<endl;
-	}
-}
-
 
 //FUNCTIONS OF CLASS INFECTION
 Infection::Infection()
@@ -1007,6 +1040,14 @@ bool Infection :: IsPathogenNew(Virus& _newVirus)
 bool Infection::IsCured()
 {
 	if(infectionType == cleared)
+		return true;
+	else
+		return false;
+}
+
+bool Infection :: IsAcute()
+{
+	if(infectionType == acute)
 		return true;
 	else
 		return false;

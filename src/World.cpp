@@ -221,7 +221,7 @@ void World::Infect(int index)
 					if(RandomNumberDouble()<transmissionRateAcute)
 					{
 						//get the acute virus
-						hosts.at(index).InfectWith(hosts.at(randomindex).pathogen, simulationTime);
+						hosts.at(index).InfectWith(hosts.at(randomindex).GetAcuteInfection(), simulationTime);
 					}
 
 				}break;
@@ -230,7 +230,7 @@ void World::Infect(int index)
 					if(RandomNumberDouble()<transmissionRateChronic)
 					{
 						// get the chronic virus
-						hosts.at(index).InfectWith(hosts.at(randomindex).pathogen, simulationTime);
+						hosts.at(index).InfectWith(hosts.at(randomindex).GetChronicInfection(), simulationTime);
 					}
 
 				}break;
@@ -243,39 +243,43 @@ void World::Infect(int index)
 void World::Escape(int index)
 {
 	//cout << "do i get stuck here??? escape event!"<< endl;
-	if(mutationType == 0) //allow for only MHC downregulation to evolve
+	list<Infection>::iterator it;
+	for(it = hosts.at(index).infections.begin(); it!= hosts.at(index).infections.end(); it++)
 	{
-		if(simulationTime>=timeMHCDownregulation)
+		if(mutationType == 0) //allow for only MHC downregulation to evolve
 		{
-			hosts.at(index).pathogen.DownregulateMHC();
+			if(simulationTime>=timeMHCDownregulation)
+			{
+				it->pathogen.DownregulateMHC();
+			}
 		}
-	}
-
-	if(mutationType == 1) //allow for evolution of directly a decoy virus
-	{
-		if(simulationTime>=timeMHCDownregulation)
+		
+		if(mutationType == 1) //allow for evolution of directly a decoy virus
 		{
-			int hap=RandomNumberDouble()<0.5;
-			int mhcID = hosts.at(index).mhcGenes.at(hap).GetGeneID(); //this allows new decoy molecules to arise
-			hosts.at(index).pathogen.BuildDecoy(mhcID);
+			if(simulationTime>=timeMHCDownregulation)
+			{
+				int hap=RandomNumberDouble()<0.5;
+				int mhcID = hosts.at(index).mhcGenes.at(hap).GetGeneID(); //this allows new decoy molecules to arise
+				it->pathogen.BuildDecoy(mhcID);
+			}
 		}
-	}
-
-	if(mutationType == 2) //allow for first MHC downregulation to evolve and then decoy
-	{
-		if(simulationTime>=timeMHCDownregulation)
+		
+		if(mutationType == 2) //allow for first MHC downregulation to evolve and then decoy
 		{
-			hosts.at(index).pathogen.DownregulateMHC();
+			if(simulationTime>=timeMHCDownregulation)
+			{
+				it->pathogen.DownregulateMHC();
+			}
+			
+			if(simulationTime >= timeDecoy)
+			{
+				int hap=RandomNumberDouble()<0.5;
+				int mhcID = hosts.at(index).mhcGenes.at(hap).GetGeneID(); //this allows new decoy molecules to arise
+				it->pathogen.BuildDecoy(mhcID);
+			}
 		}
-
-		if(simulationTime >= timeDecoy)
-		{
-			int hap=RandomNumberDouble()<0.5;
-			int mhcID = hosts.at(index).mhcGenes.at(hap).GetGeneID(); //this allows new decoy molecules to arise
-			hosts.at(index).pathogen.BuildDecoy(mhcID);
-		}
-	}
-
+		
+	}	
 }
 
 /*SIMULATION functions*/
@@ -356,17 +360,29 @@ void World::Simulate()
 				hosts.push_back(babyHost);
 				number_babies ++;
 			}
-			if(hosts.at(index).IsSusceptible())
-				Infect(index);
-			if(hosts.at(index).IsChronicInfected()|| hosts.at(index).IsAcuteInfected())
-				Escape(index);
+			//if(hosts.at(index).IsSusceptible())
+			Infect(index);
+			//if(hosts.at(index).IsChronicInfected()|| hosts.at(index).IsAcuteInfected())
+			Escape(index);
 			if(Death(index))
 			{
 				hosts.at(index).SetDead();
 				number_dead_people++;
 			}
+			
 			//clear the infection
-			if(hosts.at(index).IsAcuteInfected())
+			list<Infection>::iterator inf;
+			for(inf = hosts.at(index).infections.begin(); inf!=hosts.at(index).infections.end(); inf++) //check for every infection within one host, whether it's time to be cleared
+			{
+				//Infection nastyInfection = (*inf);
+				if(inf->IsAcute())
+				{
+					if((simulationTime - inf->GetInfectionTime()) == (1.0 + 4.0 *timeInfection)*WEEK)
+						hosts.at(index).ClearInfection(simulationTime,(*inf));					
+				}
+
+			}
+			/*if(hosts.at(index).IsAcuteInfected())
 			{
 
 				if((simulationTime -hosts.at(index).GetInfectionTime()) == (1.0 + 4.0*timeInfection)*WEEK)
@@ -374,8 +390,9 @@ void World::Simulate()
 					hosts.at(index).ClearInfection(simulationTime);
 				}
 			}
-
-			hosts.at(index).UpdateParameters(timeStep,simulationTime,timeInfection*WEEK);
+*/
+			hosts.at(index).UpdateParameters(timeStep,simulationTime);
+			 
 		}
 		//record those who are dying!
 	/*	if(SaveAgeDyingHosts(lastOutfileTime, lastStopOutfileTime))
@@ -451,10 +468,10 @@ void World ::IntroduceVirus()
 		for(int i= 0; i<0.05* hosts.size(); i++)
 		{
 			int randomindex = RandomNumber(0,hosts.size()-1);
-			while(!hosts.at(randomindex).IsSusceptible())
+			/*while(!hosts.at(randomindex).IsSusceptible())
 			{
 				randomindex = RandomNumber(0,hosts.size()-1);
-			}
+			}*/
 			hosts.at(randomindex).InfectWith(nastyVirus, simulationTime);
 		}
 	}
@@ -515,6 +532,25 @@ void World::RemoveDeadHosts()
 		}
 		else
 		{
+			list<Infection>:: iterator it;
+			for(it = hosts.at(pos).infections.begin(); it!= hosts.at(pos).infections.end(); it++)
+			{
+				int inf_type = it->GetInfectionType();
+				switch(inf_type)
+				{
+					case 1:{acute_infected++;}break;
+					case 2:{chronic_infected++;}break;
+					case 3:{immune++;}break;				
+				}
+				int virus_type = it->pathogen.GetVirusType();
+				switch(virus_type)
+				{
+					case 1:{downregulating++;}break;
+					case 2:{decoy++;}break;
+				}
+			
+			}
+			/*
 			if(hosts.at(pos).IsAcuteInfected())
 				acute_infected++;
 			if(hosts.at(pos).IsChronicInfected())
@@ -524,7 +560,7 @@ void World::RemoveDeadHosts()
 			if(hosts.at(pos).pathogen.IsDownregulatingMHC())
 				downregulating ++;
 			if(hosts.at(pos).pathogen.IsStealingDecoy())
-				decoy ++;
+				decoy ++;*/
 		}
 		pos ++;
 	}
