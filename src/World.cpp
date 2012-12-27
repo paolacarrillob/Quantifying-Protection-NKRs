@@ -360,9 +360,7 @@ void World::Simulate()
 				hosts.push_back(babyHost);
 				number_babies ++;
 			}
-			//if(hosts.at(index).IsSusceptible())
 			Infect(index);
-			//if(hosts.at(index).IsChronicInfected()|| hosts.at(index).IsAcuteInfected())
 			Escape(index);
 			if(Death(index))
 			{
@@ -374,7 +372,6 @@ void World::Simulate()
 			list<Infection>::iterator inf;
 			for(inf = hosts.at(index).infections.begin(); inf!=hosts.at(index).infections.end(); inf++) //check for every infection within one host, whether it's time to be cleared
 			{
-				//Infection nastyInfection = (*inf);
 				if(inf->IsAcute())
 				{
 					if((simulationTime - inf->GetInfectionTime()) == (1.0 + 4.0 *timeInfection)*WEEK)

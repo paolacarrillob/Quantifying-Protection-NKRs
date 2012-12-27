@@ -82,6 +82,9 @@ public:
 	bool IsAcute();
 	void TransmitInfection(Virus& nastyInfection, double simulationTime);
 
+	void SaveParametersInfection(fstream& outfile);
+	void SaveBackupInfection(fstream & backup);
+	string RestoreInfection(stringstream& siline);
 	Virus pathogen;
 
 protected:

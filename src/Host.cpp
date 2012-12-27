@@ -832,6 +832,7 @@ void Host ::ClearDecoyWithActivatingAndInhibitory(int inhibiting_signal, int act
 Virus& Host :: GetAcuteInfection()
 {
 	list<Infection>:: iterator it;
+	Virus dummy;
 	int inf_type = 0;
 	for(it = infections.begin(); it!= infections.end(); it++)
 	{
@@ -841,6 +842,7 @@ Virus& Host :: GetAcuteInfection()
 		else //if it is, return the acute virus
 			return it->pathogen;
 	}
+	return dummy; // in case the list is empty, return an empty virus... shoudln't happen anyway! if the list is empty, this function should not be called!
 }
 
 /*This functions returns a ramdonly chose chronic virus infection  !!!!!! WHAT IS HAPPENING TO THIS VECTOR???? SHALL I DELETE IT SOMEHOW????*/
@@ -900,8 +902,12 @@ void Host::SaveGenes(fstream& outfile)
 
 void Host ::SaveParameters(fstream& outfile)
 {
-	//outfile <<age << "\t" << infectionTime/YEAR <<"\t" << infectionType << "\t"<< viralDeathRate<<"\t"<<ageInfection << "\t"<< ageClearance<<"\t";
-	//pathogen.SaveParametersVirus(outfile);
+	outfile <<age << "\t"<<infections.size()<< "\t";
+	list<Infection>::iterator infIt;
+	for(infIt = infections.begin(); infIt!=infections.end(); infIt++)
+	{
+		 infIt->SaveParametersInfection(outfile);
+	}
 	outfile <<  "\n";
 }
 
@@ -923,10 +929,14 @@ void Host::SaveBackupHost(fstream& backupFile)
 	//cout << "saving hosts..."<<endl;
 	vector<KIRGene>::iterator kirIt;
 	vector<Gene>::iterator mhcIt;
-	//backupFile << LOCI_KIR << "\t"<<LOCI_MHC<<"\t"<< age << "\t"<< infectionType<< "\t"<< infectionTime << "\t"<<clearanceTime << "\t"<<immunityTime << "\t"<< tuning << "\t"
-	//<< dead << "\t"<< mutationRateHost << "\t"<< viralDeathRate << "\t"<<ageInfection <<"\t"<<ageClearance <<"\t"<<inhibitoryKIRs<<"\t"<<activatingKIRs<<"\t";
+	list<Infection>::iterator infIt;
 
-	//pathogen.SaveBackupVirus(backupFile);
+	backupFile << LOCI_KIR << "\t"<<LOCI_MHC<<"\t"<< age << "\t"<< tuning << "\t"<< dead << "\t"<< mutationRateHost << "\t"<<inhibitoryKIRs<<"\t"<<activatingKIRs<<"\t"<< infections.size()<<"\t";
+
+	for(infIt = infections.begin(); infIt != infections.end(); infIt++)
+	{
+		infIt->SaveBackupInfection(backupFile);
+	}
 
 	for(mhcIt = mhcGenes.begin(); mhcIt!=mhcGenes.end(); mhcIt++)
 	{
@@ -945,32 +955,24 @@ void Host::RestoreHost(const string& sline)
 	ssline >> LOCI_KIR;
 	ssline >> LOCI_MHC;
 	ssline >>age;
-	//Ouss ssline >> infectionType;
-	int inf;
-	ssline >> inf;
-	//cout <<"inf:  "<<inf <<endl;
-/*	switch(inf)
-	{
-	case 0:{infectionType = susceptible;}break;
-	case 1:(infectionType = incubating);break;
-	case 2:{infectionType = acute;}break;
-	case 3:{infectionType = chronic;}break;
-	case 4:{infectionType = immune;}break;
-	}*/
-	//cout << "infection Type: "<<infectionType <<endl;
-	//ssline >> infectionTime;
-	//ssline >> clearanceTime;
-	//ssline >> immunityTime;
 	ssline >> tuning;
 	ssline >> dead;
 	ssline >> mutationRateHost;
-	ssline >> viralDeathRate;
-//	ssline >> ageInfection;
-	//ssline >> ageClearance;
 	ssline >> inhibitoryKIRs;
 	ssline >> activatingKIRs;
+	int totalInfections;
+	ssline >> totalInfections;
 //	cout << LOCI_KIR<<"\t"<<age << "\t"<< infectionType<< "\t"<< infectionTime << "\t"<<clearanceTime << "\t"<< tuning << "\t"<< dead << "\t"<< mutationRateHost << "\t"<< viralDeathRate << "\t"<<endl;
-/*	string geneString = pathogen.RestoreVirus(ssline);
+
+
+	string infectionString;
+	for(int i=0; i<totalInfections; i++)
+	{
+		Infection dummyInfection;
+		infectionString = dummyInfection.RestoreInfection(ssline);
+		ssline.str() = infectionString;
+	}
+	string geneString = infectionString;
 	ssline.str() = geneString;
 
 	for(int i=0; i<LOCI_MHC*TWO; i++)
@@ -989,7 +991,7 @@ void Host::RestoreHost(const string& sline)
 //		cout <<"id:\t"<<kir.GetGeneID()<<" func:\t"<<kir.IsFunctional()<<" kirSize: "<< kirGenes.size()<<endl;
 //		cout <<ssline.str()<<endl;
 		ssline.str() = geneString;
-	}*/
+	}
 }
 
 
@@ -1110,6 +1112,44 @@ void Infection::SetInfectionType(double simulationTime)
 		infectionType = cleared;
 	}
 }
+
+
+void Infection ::SaveParametersInfection(fstream& outfile)
+{
+	outfile << infectionTime/YEAR <<"\t" << infectionType << "\t";
+	pathogen.SaveParametersVirus(outfile);
+
+}
+
+void Infection::SaveBackupInfection(fstream& backupFile)
+{
+	backupFile<< infectionType<< "\t"<< infectionTime << "\t"<<clearanceTime << "\t"<<immunityTime << "\t";
+	pathogen.SaveBackupVirus(backupFile);
+}
+
+
+string Infection::RestoreInfection(stringstream& siline)
+{
+	int inf;
+	siline >> inf;
+	//cout <<"inf:  "<<inf <<endl;
+	switch(inf)
+	{
+	case 0:{infectionType = cleared;}break;
+	case 1:(infectionType = incubating);break;
+	case 2:{infectionType = acute;}break;
+	case 3:{infectionType = chronic;}break;
+	case 4:{infectionType = memory;}break;
+	}
+	//cout << "infection Type: "<<infectionType <<endl;
+	siline >> infectionTime;
+	siline >> clearanceTime;
+	siline >> immunityTime;
+
+	string istring = siline.str();
+	return istring;
+}
+
 
 
 
