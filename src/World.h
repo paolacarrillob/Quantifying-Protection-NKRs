@@ -14,20 +14,26 @@ public:
 	World(); //Default constructor
 	virtual ~World(){}; //destructor that so far does nothing at all!
 
+	void WriteInfo();
 	void LoadParameterFile(const string& fileName);//works
 	bool Initialize(); //works
 	void CreateBirthAndDeathRates();
 
-	bool Birth(int index, Host& host); 	// Birth() function takes a host at index (index) and picks a random host at a random index and create a "child" that is copied to (host).
+	bool Birth(int index, unsigned long int next_id);//, Host& host); 	// Birth() function takes a host at index (index) and picks a random host at a random index and create a "child" that is copied to (host).
 										// It returns true or false according if the child should be added to the population or not
 	bool Death (int index);
 	void Infect(int index);
 	void Escape(int index);
 
 	void ShuffleHosts();
-	void IntroduceVirus();
+	void IntroduceVirus(const string& secondVirus);
 	void RemoveDeadHosts();
-
+	void RemoveDeadHosts_HappyNewYear();
+	void TrackInfectedIndividuals();
+	
+	double GetAgeDependentBirthRate(const double age)const;
+	double GetIntrinsicDeathRate(const double age, const double viralrate)const;
+	
 	void Simulate();
 
 	void SaveGenes();//works
@@ -46,6 +52,7 @@ public:
 	Virus nastyVirus;
 	Virus downregulatingVirus;
 	Virus decoyVirus;
+	
 
 	double mutationRate;
 	bool education;
@@ -53,6 +60,7 @@ public:
 	bool HLA_C;
 	int KIRspecificity;
 	int KIRLoci;
+	int KIRGeneType;
 	int MHCLoci;
 	int sizeMHCPool;
 	unsigned int initHostPop;
@@ -68,15 +76,16 @@ protected:
 	double timeStep;
 	double timeEnd;
 	double simulationTime;
-	double timeIntroducingInfection;
 	double outfileRate;
 	double backupRate;
 	double populationSizeRate;
 	int maxHostPop;
 
 	int contactRate;
+	double timeIntroducingInfection;
 	double timeMHCDownregulation;
 	double timeDecoy;
+	string secondVirus;
 
 	double deltaVirus;
 	double timeInfection;
@@ -97,9 +106,12 @@ protected:
 	int immune;
 	int downregulating;
 	int decoy;
-
+	int wildtype;
+	
+	int maxNumberOfInfectionsPerHost;
+	
 	bool isFileOpen;
-	fstream populationSize;
+	ofstream populationSize;
 	fstream genesFile;
 	fstream parameterFile;
 	fstream backupFile;

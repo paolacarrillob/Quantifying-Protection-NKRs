@@ -17,6 +17,8 @@ void World :: LoadParameterFile(const string& fileName)
 	double t_backup;
 	double t_popFile;
 	bool onlyAcuteInfection;
+	char buff[256];
+	
 	kaBackup paramFile(fileName,false);
 	paramFile.Load("Maximal population size", &maxHostPop);
 	paramFile.Load("Initial population size", &initHostPop);
@@ -31,6 +33,7 @@ void World :: LoadParameterFile(const string& fileName)
 	paramFile.Load("Mutation type host", &mutationTypeHost);
 	paramFile.Load("Contacts per week", &contactRate);
 	paramFile.Load("KIR Loci", &KIRLoci);
+	paramFile.Load("KIR type", &KIRGeneType);
 	paramFile.Load("MHC Loci", &MHCLoci);
 	paramFile.Load("HLA-C alleles distribution", &HLA_C);
 	paramFile.Load("Number HLA-C alleles",&sizeMHCPool);
@@ -45,18 +48,10 @@ void World :: LoadParameterFile(const string& fileName)
 	paramFile.Load("Transmission rate chronic infection", &transmissionRateChronic);
 	paramFile.Load("Type of mutation", &mutationType);
 	paramFile.Load("Type of infection", &onlyAcuteInfection);
-
-	const string populationFile("PopulationSize.txt");	//in the future if you would like to...
-														//maybe you would think of reading the name of the output file from the parameters file...
-														//
-														//char populationFileChars[256];
-														//paramFile.LoadString("Population Size", populationFileChars, 256);
-														//string populationFile(populationFileChars);
-
-	populationSize.open(populationFile.c_str(), ios::out);
-	populationSize <<"#time\tpopSize\tbabies\tdead\tacute\tchronic\timmune\tmhc_down\tdecoy\n";
-
-
+	paramFile.Load("Maximal Number of Infections", &maxNumberOfInfectionsPerHost);
+	paramFile.LoadString("Second Virus", buff, 256);
+	secondVirus.assign(buff);
+	
 	timeStep= timeStep*WEEK;
 	simulationTime = 0.0;
 	timeEnd = timeEnd*YEAR;
@@ -83,11 +78,18 @@ void World :: LoadParameterFile(const string& fileName)
 	nastyVirus.SetViralParameters(downregulationRate, decoyRate,deltaVirus,timeInfection, 0, onlyAcuteInfection);
 	downregulatingVirus.SetViralParameters(downregulationRate, decoyRate,deltaVirus,timeInfection, 1, onlyAcuteInfection);
 	decoyVirus.SetViralParameters(downregulationRate, decoyRate, deltaVirus, timeInfection, 2, onlyAcuteInfection);
-
+	
 	acute_infected = 0;
 	chronic_infected = 0;
 	immune = 0;
+	downregulating = 0;
+	decoy = 0;
+	wildtype = 0;
+	WriteInfo();
+}
 
+void World :: WriteInfo()
+{
 	cout << "Beginning simulation with: \n";
 	cout << "End Simulation after " << timeEnd/YEAR << " years \n";
 	cout << "Maximal population size " << maxHostPop << " individuals \n";
@@ -96,6 +98,7 @@ void World :: LoadParameterFile(const string& fileName)
 	cout << "Mutation rate host " << mutationRate << "\n";
 	cout << "Mutation type host " << mutationTypeHost << "\n";
 	cout << "KIR loci " << KIRLoci << "\n";
+	cout << "KIR Gene Type" << KIRGeneType << "\n";
 	cout << "MHC loci " << MHCLoci << "\n";
 	cout << "Contacts per week: " << contactRate << "\n";
 	cout << "HLA-C alleles distribution " << HLA_C<<"\n";
@@ -108,6 +111,8 @@ void World :: LoadParameterFile(const string& fileName)
 	cout << "MHC dowregulation rate " << downregulationRate <<"\n";
 	cout << "Decoy rate "<< decoyRate << "\n";
 	cout << "Tranmission rate acute infection "<< transmissionRateAcute << "\n";
+	
+	
 }
 
 // initialize host population
@@ -127,7 +132,8 @@ bool World::Initialize()
 	//initialize the population with the MHC genes of the pools
 	for (unsigned int i = 0; i< initHostPop; i++)
 	{
-		Host dummyhost(KIRLoci, MHCLoci, mutationRate, education, expressionExtraKIRs, KIRGenesMap, MHCPool, HLA_C);
+		Host dummyhost(KIRLoci, MHCLoci, mutationRate, education, expressionExtraKIRs, KIRGenesMap, MHCPool, HLA_C, KIRGeneType);
+		dummyhost.Set_Host_ID(i);
 		hosts.push_back(dummyhost);
 	}
 
@@ -138,33 +144,55 @@ bool World::Initialize()
 /* This function creates a table upon initialization that calculates the birth/death rates for all possible ages*/
 void World ::CreateBirthAndDeathRates()
 {
-	for(int i = 1; i <150; i ++)
+	try
 	{
-		double birth = -1/(1+ exp(i-20)) + 1/(1+exp(i-45));
-		birthRates.push_back(birth);
+		for(unsigned long int j=0; j <150*52; j++)
+		{
+			double i = j/52.0;
+			double birth = -1/(1+ exp(i-20)) + 1/(1+exp(i-45));
+			birthRates.push_back(birth);
 
-		double death = exp(0.1*i-10.5)+ exp(-0.4*i-8);
-		deathRates.push_back(death);
+			double death = exp(0.1*i-10.5)+ exp(-0.4*i-8);
+			deathRates.push_back(death);
+			cout << i << " "<< birth <<" "<< death << endl;
+		}
 	}
-
+	catch (...) {
+		cout << "caught something" << endl;
+	}
 }
 
 
 /*EVENT functions*/
 /*Birth function: creates a child with the haplotype of one parent and another randomly chosen host*/
-bool World::Birth(int index, Host& baby_host)
+bool World::Birth(int index,unsigned long int next_id)//, Host& baby_host)
 {
-
+	if(hosts.size() <=1)
+		return false;
 	//check if host's age allows him to become a parent
-	double ageDependentBirth = hosts.at(index).GetAgeDependentBirthRate(birthRates);
+	//cout << "do i get stuck here??? birth event!"<< endl;
+	double ageDependentBirth = 0.0;
+	try
+	{
+		//ageDependentBirth = hosts.at(index).GetAgeDependentBirthRate(birthRates);
+		ageDependentBirth = GetAgeDependentBirthRate(hosts.at(index).GetAge());
+	}
+	catch (...)
+	{
+		cout << "caught something!!!"<< endl;
+		cout << "index:" <<index << endl;
+		cout << "hosts:" <<hosts.size() << endl;		
+	}
 	//cout << "do i get stuck here??? birth event!"<< endl;
 	if(RandomNumberDouble()< birthRate*ageDependentBirth*(1-(hosts.size()/(maxHostPop*0.99753))))
 	{
 		int randomindex = RandomNumber(0,shuffledHosts.size()-1);
+		//cout << "do i get stuck here??? birth event!"<< endl;
 		//check if the potential parent is himself
 		while(randomindex == index)
 		{
 			randomindex = RandomNumber(0,shuffledHosts.size()-1);
+		//	cout << "do i get stuck here??? birth event!"<< endl;
 		}
 
 		//choose randomly which parent is going to "donate" his/her mhc molecule
@@ -173,8 +201,13 @@ bool World::Birth(int index, Host& baby_host)
 			parent = index;
 		else
 			parent = randomindex;
+		//cout << "do i get stuck here??? birth event!"<< endl;
 		Host testHost(KIRLoci,MHCLoci, hosts.at(parent).mhcGenes ,MHCPool, HLA_C,/*KIRPool, */hosts.at(index).kirGenes,hosts.at(randomindex).kirGenes, mutationRate,education,expressionExtraKIRs, KIRGenesMap, mutationTypeHost);
-		baby_host.Copy(testHost);
+		//cout << "do i get stuck here??? birth event!"<< endl;
+		testHost.Set_Host_ID(next_id);
+		hosts.push_back(testHost);
+		//baby_host.Copy(testHost);
+		//cout << "do i get stuck here??? birth event!"<< endl;
 		return true;
 	}
 	return false;
@@ -184,10 +217,16 @@ bool World::Birth(int index, Host& baby_host)
 bool World::Death(int index)
 {
 	//cout << "do i get stuck here??? death event!"<< endl;
-	double intrinsicDeath;
-	intrinsicDeath = deathRate*hosts.at(index).GetIntrinsicDeathRate(deathRates);
-	if(RandomNumberDouble()<intrinsicDeath)
+	double intrinsicDeath = 0;
+	vector<Host>::iterator it = hosts.begin() + index;
+	//double intrinsicDeathRate = it->GetIntrinsicDeathRate(deathRates);
+	double intrinsicDeathRate = GetIntrinsicDeathRate(it->GetAge(),it->GetViralDeathRate());
+	intrinsicDeath = deathRate*intrinsicDeathRate;
+	double r = RandomNumberDouble();
+	if(r<intrinsicDeath)
 	{
+		//cout << "r , intrinsicdeathrate, intrinsicdeath:" << r << " , " << intrinsicDeathRate << " , " << intrinsicDeath << (r<intrinsicDeath?" ====> will DIE":"") << endl; 		
+		it->SetDead();
 		return true;
 	}
 	return false;
@@ -197,6 +236,8 @@ bool World::Death(int index)
 void World::Infect(int index)
 {
 	//cout << "do i get stuck here??? infect event!"<< endl;
+	if(hosts.size() <=1)
+		return;
 	if(RandomNumberDouble()<infectionRate)
 	{
 		for(int i=0; i<contactRate; i++)
@@ -214,26 +255,29 @@ void World::Infect(int index)
 			else
 			{
 				int infectionState = hosts.at(randomindex).GetMainInfectionType();
+				Virus stupidVirus;
 				switch (infectionState)
 				{
-				case 1:
-				{
-					if(RandomNumberDouble()<transmissionRateAcute)
+					case 1:
 					{
-						//get the acute virus
-						hosts.at(index).InfectWith(hosts.at(randomindex).GetAcuteInfection(), simulationTime);
-					}
+						if(RandomNumberDouble()<transmissionRateAcute)
+						{
+							//get the acute virus
+							stupidVirus.Copy(hosts.at(randomindex).GetAcuteInfection());
+							hosts.at(index).InfectWith(stupidVirus, simulationTime);
+						}
 
-				}break;
-				case 2:
-				{
-					if(RandomNumberDouble()<transmissionRateChronic)
+					}break;
+					case 2:
 					{
-						// get the chronic virus
-						hosts.at(index).InfectWith(hosts.at(randomindex).GetChronicInfection(), simulationTime);
-					}
-
-				}break;
+						if(RandomNumberDouble()<transmissionRateChronic)
+						{
+							// get the chronic virus
+							stupidVirus.Copy(hosts.at(randomindex).GetChronicInfection());
+							hosts.at(index).InfectWith(stupidVirus, simulationTime);
+						}
+					}break;
+					//default: cout <<"ERROR!!!!!! shouldn't happen!" <<endl; exit(1);
 				}
 			}
 		}
@@ -315,6 +359,17 @@ void World::ShuffleHosts()
 
 void World::Simulate()
 {
+	//populationSize << "blabla\n" <<endl;
+	const string populationFile("PopulationSize.log");	//in the future if you would like to...
+	//maybe you would think of reading the name of the output file from the parameters file...
+	//
+	//char populationFileChars[256];
+	//paramFile.LoadString("Population Size", populationFileChars, 256);
+	//string populationFile(populationFileChars);
+	
+	populationSize.open(populationFile.c_str());
+	populationSize <<"#time\tpopSize\tbabies\tdead\tacute\tchronic\timmune\tmhc_down\tdecoy\n";
+	
 	double lastPopulationOutfileTime = 0.0;
 	double lastOutfileTime = 0.0;
 	//double lastStopOutfileTime = timeRecording;
@@ -323,20 +378,21 @@ void World::Simulate()
 
 	isFileOpen = false;
 	SaveMap();
-
-	cout << "time Decoy:  "<< timeDecoy << "\n";
-	cout << "simulation Time: "<<simulationTime <<"\n";
-
+	//cout << "time Decoy:  "<< timeDecoy << "\n";
+	cout << "simulation Time: "<<simulationTime <<"\n"<<endl;
+	unsigned long int id_counter = initHostPop;
 	while(simulationTime <=timeEnd)
 	{
 		// printing out the backup files
 		if(floor((simulationTime-lastBackupTime)*backupRate)>0)
 		{
-			cout <<"\tSaving Backup\n";
+			cout <<"\tSaving Backup\n"<<endl;
 			SaveBackupFile();
 			SaveMap();
 			lastBackupTime = simulationTime;
 		}
+		
+//		cout <<"\t1\n"<<endl;
 
 
 		int number_babies = 0;
@@ -344,29 +400,37 @@ void World::Simulate()
 		//cout<< "Time: " << simulationTime/YEAR <<endl;
 
 		ShuffleHosts();
+//		cout <<"\t2\n"<<endl;
 		vector<int>::iterator shuffledHostsit;
 
 		//introduce infection
-		//if(floor(timeIntroducingInfection -simulationTime) > 0 && floor(timeIntroducingInfection -simulationTime) < 3.0*WEEK)
-			IntroduceVirus();
-
+		IntroduceVirus(secondVirus);
+//		cout <<"\t3\n"<<endl;
 		for(shuffledHostsit = shuffledHosts.begin(); shuffledHostsit!=shuffledHosts.end(); shuffledHostsit++)
 		{
 			//let event happen for every random host
 			int index = *shuffledHostsit;
 			Host babyHost;
-			if(Birth(index, babyHost))
+//			cout <<"\t4\n"<<endl;
+			//if(Birth(index, babyHost))
+			if(Birth(index,id_counter))
 			{
-				hosts.push_back(babyHost);
-				number_babies ++;
+//				cout <<"\t4\n"<<endl;
+				//hosts.push_back(babyHost);
+				number_babies++;
+				id_counter++;
 			}
+//			cout <<"\t4\n"<<endl;
 			Infect(index);
+//			cout <<"\t5\n"<<endl;
 			Escape(index);
+//			cout <<"\t6\n"<<endl;
 			if(Death(index))
 			{
-				hosts.at(index).SetDead();
+				//hosts.at(index).SetDead();
 				number_dead_people++;
 			}
+//			cout <<"\t7\n"<<endl;
 			
 			//clear the infection
 			list<Infection>::iterator inf;
@@ -379,33 +443,35 @@ void World::Simulate()
 				}
 
 			}
-			/*if(hosts.at(index).IsAcuteInfected())
-			{
-
-				if((simulationTime -hosts.at(index).GetInfectionTime()) == (1.0 + 4.0*timeInfection)*WEEK)
-				{
-					hosts.at(index).ClearInfection(simulationTime);
-				}
-			}
-*/
+//			cout <<"\t8\n"<<endl;
 			hosts.at(index).UpdateParameters(timeStep,simulationTime);
-			 
+//			cout <<"\t9\n"<<endl;
 		}
+		
 		//record those who are dying!
 	/*	if(SaveAgeDyingHosts(lastOutfileTime, lastStopOutfileTime))
 			lastStopOutfileTime = simulationTime;*/
 
-		RemoveDeadHosts();
-
+		//RemoveDeadHosts();
+		RemoveDeadHosts_HappyNewYear();
+//		cout << "hosts size:" << hosts.size() << endl;
+//		cout <<"\t10\n";
 		//printing out the population size not every week but with a rate (otherwise the file will turn huge!!!!)
 		bool timeToPrintPopulationSize = floor((simulationTime-lastPopulationOutfileTime)*populationSizeRate)>0;
 		if(simulationTime == 0.0 || timeToPrintPopulationSize)
 		{
+			//cout << "what's going on?????" <<endl;
 			SavePopulationSize(number_babies,number_dead_people);
 			lastPopulationOutfileTime = simulationTime;
 		}
+		if(hosts.size() == 0)
+		{
+			cout << "Oooops pao is angry and by the way host size is:" << hosts.size() << endl;
+			break;
+		}
+		TrackInfectedIndividuals();
 
-		//cout<< "Time: " << simulationTime/YEAR <<endl;
+		cout<< "Time: " << simulationTime/YEAR <<endl;
 		// printing out the gene files
 		bool timeToPrintOut = floor((simulationTime-lastOutfileTime)*outfileRate)>0;
 		if(simulationTime == 0.0 || timeToPrintOut)
@@ -426,7 +492,7 @@ void World::Simulate()
 			if(floor((simulationTime -lastAcuteInfectionTime)*(1.0/(1.0*YEAR)))>0)
 			{
 				cout << "reintroducing the infection"<<endl;
-				IntroduceVirus();
+				IntroduceVirus(secondVirus);
 				lastAcuteInfectionTime = simulationTime;
 			}
 		}
@@ -435,77 +501,149 @@ void World::Simulate()
 	}
 	populationSize.close();
 	SaveMap();
-
-	cout << "The simulation was carried out with: \n";
-	cout << "End Simulation after " << timeEnd/YEAR << " years \n";
-	cout << "Maximal population size " << maxHostPop << " individuals \n";
-	cout << "Initial population size " << initHostPop << " individuals \n";
-	cout << "Introducing virus after " << timeIntroducingInfection/YEAR << " years \n";
-	cout << "Mutation rate host " << mutationRate << "\n";
-	cout << "Mutation type host " << mutationTypeHost << "\n";
-	cout << "Contacts per week: " << contactRate << "\n";
-	cout << "KIR Loci: " << KIRLoci << "\n";
-	cout << "HLA-C alleles distribution " << HLA_C<<"\n";
-	cout << "Number of HLA alleles " << sizeMHCPool<<"\n";
-	cout << "Initial MHC-KIR specificity " << KIRspecificity<<"\n"; //this is only for the initial pool, basically, the maximum specificity is set with this
-	cout << "Tuning "<< education << "\n";
-	cout << "Expression extra KIRs "<< expressionExtraKIRs << "\n";
-	cout << "Viral load: " << deltaVirus << "\n";
-	cout << "Life time virus: " << timeInfection << "\n";
-	cout << "MHC dowregulation rate " << downregulationRate <<"\n";
-	cout << "Decoy rate "<< decoyRate << "\n";
-	cout << "Tranmission rate acute infection "<< transmissionRateAcute << "\n";
+	WriteInfo();
 }
 
-void World ::IntroduceVirus()
+void World ::IntroduceVirus(const string& secondVirus)
 {
-	if(floor(timeIntroducingInfection -simulationTime) > 0 && floor(timeIntroducingInfection -simulationTime) < 3.0*WEEK)
+	string decoyVirusString("decoy");
+	string mhcDownVirusString("mhc down");
+
+	switch(maxNumberOfInfectionsPerHost)
 	{
-		cout <<"\t Introducing the infection"<<endl;
-		for(int i= 0; i<0.05* hosts.size(); i++)
+		case 1:
 		{
-			int randomindex = RandomNumber(0,hosts.size()-1);
-			/*while(!hosts.at(randomindex).IsSusceptible())
+			if(floor(timeIntroducingInfection -simulationTime) > 0 && floor(timeIntroducingInfection -simulationTime) < 3.0*WEEK)
 			{
-				randomindex = RandomNumber(0,hosts.size()-1);
-			}*/
-			hosts.at(randomindex).InfectWith(nastyVirus, simulationTime);
+				cout <<"\t Introducing the infection"<<endl;
+				for(int i= 0; i<0.05* hosts.size(); i++)
+				{
+					int randomindex = RandomNumber(0,hosts.size()-1);
+					while(hosts.at(randomindex).IsInfected())
+					 {
+					 randomindex = RandomNumber(0,hosts.size()-1);
+					 }
+					hosts.at(randomindex).InfectWith(nastyVirus, simulationTime);
+				}
+			}
+			
 		}
-	}
-
-
-
-	/*
-		//introducing mutant virus: downregulation
-	if(floor(timeDecoy -simulationTime) > 0 && floor(timeDecoy -simulationTime) < 3.0*WEEK)
-	{
-		cout <<"\t Introducing mutant viruses: MHC Downregulation"<<endl;
-		for(int i= 0; i<0.5* hosts.size(); i++)
+		case 2: 
 		{
-			int randomindex = RandomNumber(0,hosts.size()-1);
-			hosts.at(randomindex).InfectWith(downregulatingVirus, simulationTime);
-		}
-	}
-
-
-		 * Manually introduce the mutant viruses
-		 *
-
-	//introducing mutant virus: downregulation+decoy
-	if(floor(timeDecoy -simulationTime) > 0 && floor(timeDecoy -simulationTime) < 3.0*WEEK)
-	{
-		int randomindex = RandomNumber(0,hosts.size()-1);
-		int hap=RandomNumberDouble(0,1)<0.5;
-		//int mhcID = MHCPool.GetGenes().at(5);
-		int mhcID = hosts.at(randomindex).mhcGenes.at(hap).GetGeneID();
-		cout <<"\t Introducing mutant viruses: MHC Downregulation + Decoys"<<endl;
-		for(int i= 0; i<0.95*hosts.size(); i++)
+			if(floor(timeDecoy -simulationTime) > 0 && floor(timeDecoy -simulationTime) < 3.0*WEEK)
+			{
+				if(secondVirus.compare(mhcDownVirusString) == 0)
+				{
+					cout <<"\t Introducing mutant viruses: MHC Downregulation"<<endl;
+					for(int i= 0; i<0.5* hosts.size(); i++)
+					{
+						int randomindex = RandomNumber(0,hosts.size()-1);
+						hosts.at(randomindex).InfectWith(downregulatingVirus, simulationTime);
+					}
+				}
+				if(secondVirus.compare(decoyVirusString) == 0)
+				{
+					int randomindex = RandomNumber(0,hosts.size()-1);
+					int hap=RandomNumberDouble(0,1)<0.5;
+					int mhcID = hosts.at(randomindex).mhcGenes.at(hap).GetGeneID();
+					cout <<"\t Introducing mutant viruses: MHC Downregulation + Decoys"<<endl;
+					for(int i= 0; i<0.95*hosts.size(); i++)
+					{
+						int randomindex2 = RandomNumber(0,hosts.size()-1);
+						decoyVirus.mhcDecoy.SetGeneID(mhcID);
+						hosts.at(randomindex2).InfectWith(decoyVirus, simulationTime);
+					}
+					
+				}
+				
+			}			
+		}break;
+		case 3:
 		{
-			int randomindex2 = RandomNumber(0,hosts.size()-1);
-			decoyVirus.mhcDecoy.SetGeneID(mhcID);
-			hosts.at(randomindex2).InfectWith(decoyVirus, simulationTime);
+			//introducing mutant virus: downregulation
+			if(floor(timeDecoy -simulationTime) > 0 && floor(timeDecoy -simulationTime) < 3.0*WEEK)
+			{
+				cout <<"\t Introducing mutant viruses: MHC Downregulation"<<endl;
+				for(int i= 0; i<0.5* hosts.size(); i++)
+				{
+					int randomindex = RandomNumber(0,hosts.size()-1);
+					hosts.at(randomindex).InfectWith(downregulatingVirus, simulationTime);
+				}
+			}
+			
+			//introducing mutant virus: downregulation+decoy
+			if(floor(timeDecoy - simulationTime) > 0 && floor(timeDecoy -simulationTime) < 3.0*WEEK)
+			{
+				int randomindex = RandomNumber(0,hosts.size()-1);
+				int hap=RandomNumberDouble(0,1)<0.5;
+				//int mhcID = MHCPool.GetGenes().at(5);
+				int mhcID = hosts.at(randomindex).mhcGenes.at(hap).GetGeneID();
+				cout <<"\t Introducing mutant viruses: MHC Downregulation + Decoys"<<endl;
+				for(int i= 0; i<0.95*hosts.size(); i++)
+				{
+					int randomindex2 = RandomNumber(0,hosts.size()-1);
+					decoyVirus.mhcDecoy.SetGeneID(mhcID);
+					hosts.at(randomindex2).InfectWith(decoyVirus, simulationTime);
+				}
+			}			
+		}break;
+		default: cout <<"ERROR!!!!!! shouldn't happen!" <<endl; exit(1);
+	}
+}
+
+void World::TrackInfectedIndividuals()
+{
+	acute_infected = 0;
+	chronic_infected = 0;
+	immune = 0;
+	downregulating = 0;
+	decoy = 0;
+	wildtype = 0;
+	
+	vector<Host>::iterator it_host = hosts.begin();
+	while(it_host != hosts.end())
+	{	//check what kind of infections the hosts have
+		list<Infection>:: iterator it;
+		for(it = it_host->infections.begin(); it!= it_host->infections.end(); it++)
+		{
+			int inf_type = it->GetInfectionType();
+			switch(inf_type)
+			{
+				case 0:{acute_infected++;}break;
+				case 1:{acute_infected++;}break;
+				case 2:{chronic_infected++;}break;
+				case 3:{immune++;}break;
+					//default: cout <<"ERROR!!!!!! COUNTING OTHER INFECTIONS! shouldn't happen!" <<endl; exit(1);
+			}
+			int virus_type = it->pathogen.GetVirusType();
+			switch(virus_type)
+			{
+				case 0:{wildtype++;}break;
+				case 1:{downregulating++;}break;
+				case 2:{decoy++;}break;
+				default: cout <<"ERROR!!!!!! COUNTING OTHER VIRUSES! shouldn't happen!" <<endl; exit(1);
+			}
 		}
-	}*/
+		it_host++;
+	}
+}
+
+void World::RemoveDeadHosts_HappyNewYear()
+{	
+//	int deathcount=0;
+	vector<Host>::iterator it = hosts.begin();
+	while(it!=hosts.end())
+	{
+		if(it->IsDead())
+		{
+			it = hosts.erase(it);
+//			deathcount++;
+			continue;
+		}
+		it++;
+	}
+//	if(deathcount >0)
+//		cout << deathcount << endl;
 }
 
 void World::RemoveDeadHosts()
@@ -516,48 +654,45 @@ void World::RemoveDeadHosts()
 	immune = 0;
 	downregulating = 0;
 	decoy = 0;
+	wildtype = 0;
+	
 	int pos = 0;
 	int max = hosts.size();
 	while(pos < max)
 	{
+		//cout << "i am here?" << max << " pos: "<<pos<<endl;
 		if(hosts.at(pos).IsDead())
 		{
 
 			//remove the host
 			hosts.erase(hosts.begin() + pos);
 			max = hosts.size();
+			//pos--;
 		}
 		else
-		{
+		{	//check what kind of infections the hosts have
 			list<Infection>:: iterator it;
 			for(it = hosts.at(pos).infections.begin(); it!= hosts.at(pos).infections.end(); it++)
 			{
 				int inf_type = it->GetInfectionType();
 				switch(inf_type)
 				{
+					case 0:{acute_infected++;}break;
 					case 1:{acute_infected++;}break;
 					case 2:{chronic_infected++;}break;
-					case 3:{immune++;}break;				
+					case 3:{immune++;}break;
+					//default: cout <<"ERROR!!!!!! COUNTING OTHER INFECTIONS! shouldn't happen!" <<endl; exit(1);
 				}
 				int virus_type = it->pathogen.GetVirusType();
 				switch(virus_type)
 				{
+					case 0:{wildtype++;}break;
 					case 1:{downregulating++;}break;
 					case 2:{decoy++;}break;
+					default: cout <<"ERROR!!!!!! COUNTING OTHER VIRUSES! shouldn't happen!" <<endl; exit(1);
 				}
-			
 			}
-			/*
-			if(hosts.at(pos).IsAcuteInfected())
-				acute_infected++;
-			if(hosts.at(pos).IsChronicInfected())
-				chronic_infected++;
-			if(hosts.at(pos).IsImmune())
-				immune ++;
-			if(hosts.at(pos).pathogen.IsDownregulatingMHC())
-				downregulating ++;
-			if(hosts.at(pos).pathogen.IsStealingDecoy())
-				decoy ++;*/
+
 		}
 		pos ++;
 	}
@@ -571,11 +706,11 @@ void World:: SaveGenes()
 	stringstream ss;
 	ss << simulationTime/YEAR;
 	string s(ss.str());
-	s+=".Genes.txt";
+	s+=".Genes.log";
 	
 	genesFile.open(s.c_str(), ios::out);
 
-	genesFile << "#Host ID\t";
+	genesFile << "#Host Index\t";
 	for(unsigned int i = 0; i< hosts.at(0).mhcGenes.size(); i++)
 	{
 		genesFile << "Mhc"<< i+1 <<"\t";
@@ -586,7 +721,7 @@ void World:: SaveGenes()
 		genesFile << "Kir"<< i+1 <<"\t";
 	}
 
-	genesFile << "\tfunctional Kirs\texpressed Kirs\n";
+	genesFile << "\tfunctional Kirs\texpressed Kirs\t host_id \n";
 	int index = 0;
 	vector<Host>::iterator hostIt;
 	for(hostIt = hosts.begin(); hostIt != hosts.end(); hostIt ++)
@@ -602,7 +737,8 @@ void World:: SaveGenes()
 /*This function keeps track (and saves) of the population size*/
 void World::SavePopulationSize(int babies,int dead_people)
 {
-	populationSize <<simulationTime/YEAR <<"\t"<< hosts.size() <<"\t"<<babies <<"\t"<<dead_people<<"\t"<<acute_infected << "\t"<< chronic_infected << "\t"<< immune << "\t"<<downregulating<< "\t"<< decoy <<"\n";
+	//populationSize << "hehehehehehe"<<endl;
+	populationSize <<simulationTime/YEAR <<"\t"<< hosts.size() <<"\t"<<babies <<"\t"<<dead_people<<"\t"<<acute_infected << "\t"<< chronic_infected << "\t"<< immune << "\t"<<wildtype<<"\t"<<downregulating<< "\t"<< decoy <<"\n";
 }
 
 /*This function keeps track (ans saves) several parameters of the host and virus*/
@@ -611,10 +747,9 @@ void World::SaveParameters()
 	stringstream ss;
 	ss << simulationTime/YEAR;
 	string s(ss.str());
-	s+=".txt";
+	s+=".log";
 	parameterFile.open(s.c_str(), ios::out);
-
-	parameterFile << "#HostID\t" << "Age \t" << "Infection Time \t" << "Infection type \t" << "Virus type\t" << "viral load \t"<< "decoy ID\n";
+	parameterFile << "#HostIndex\t Age\t totalInfections\t infectionTime\t infectionType\t virusType\t viralLoad\t originalViralLoad\t decoyID\t onlyAcute\t Host_ID\n";
 	vector<Host>::iterator hostIt;
 	int index = 0;
 	for(hostIt = hosts.begin(); hostIt != hosts.end(); hostIt ++)
@@ -632,7 +767,7 @@ void World::SaveMap()
 	stringstream ss;
 	ss << simulationTime/YEAR;
 	string s(ss.str());
-	s+=".Map.txt";
+	s+=".Map.log";
 	mapFile.open(s.c_str(), ios::out);
 
 	map< int, pair <int, int> > ::iterator it;
@@ -655,7 +790,7 @@ bool World::SaveAgeDyingHosts(double lastOutfileTime, double lastStopOutfileTime
 		stringstream ss;
 		ss << simulationTime/YEAR;
 		string s(ss.str());
-		s+=".Age.txt";
+		s+=".Age.log";
 		dyingHosts.open(s.c_str(), ios::out);
 		dyingHosts << "#Age \t KIR genes\t virus type\t viral load\t decoy ID\t onlyAcute?\t infection type\t infection time\t clearance time\n";
 	}
@@ -798,4 +933,23 @@ void World ::LoadBackupFile(const string& fileName)
 		l++;
 	}
 	backupFile.close();
+}
+
+double World :: GetIntrinsicDeathRate(const double age, const double viralDeathRate)const
+{
+	int a = round(age*52.0);
+	if(a >= deathRates.size())
+		cout << a << "|" << deathRates.size() << "age" << "ERROR in the deathrate!!!!" <<endl;
+	double intrinsicDeathRate = deathRates.at(a) + viralDeathRate;
+	// 	cout << "a, age, rate at, intrinsicdeathRates: "<< a << ", " << age << " , " << rates.at(a) << " , "<<intrinsicDeathRate << endl;
+	return intrinsicDeathRate;
+}
+
+double World :: GetAgeDependentBirthRate(const double age)const
+{
+	int a = round(age*52.0);
+	if(a >= birthRates.size())
+		cout << a << "|" << birthRates.size() << "age" << "ERROR in the birth rate!!!!" <<endl;
+	double ageDependentBirthrate = birthRates.at(a);
+	return ageDependentBirthrate;
 }

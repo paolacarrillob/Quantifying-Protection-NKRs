@@ -112,6 +112,11 @@ void Virus::SaveBackupVirus(fstream& file)
 	file << mutationRateDownregulation << "\t" << mutationRateDecoy << "\t" << lifeTimeVirus << "\t" << viralLoad <<"\t" <<originalViralLoad<<"\t"<< virusType <<"\t" << mhcDecoy.GetGeneID()<< "\t"<<onlyAcute <<"\t";
 }
 
+void Virus::PrintParametersVirus()
+{
+	cout << mutationRateDownregulation << "\t" << mutationRateDecoy << "\t" << lifeTimeVirus << "\t" << viralLoad <<"\t" <<originalViralLoad<<"\t"<< virusType <<"\t" << mhcDecoy.GetGeneID()<< "\t"<<onlyAcute <<endl;
+}
+
 string Virus::RestoreVirus(stringstream& svline)
 {
 	int type;
@@ -144,7 +149,7 @@ void Virus :: SaveParametersVirus(fstream& outfile)
 /*FUNCTIONS OF CLASS HOST
  *Constructs a host for the initialization of the population: it fills the MHC genes with a randomly picked allele from the population
  * and creates KIRs that match their own MHC according to the specificity*/
-Host::Host(int loci_kir, int loci_mhc, double _mutationRate, bool _tuning, int numberOfExtraKirs,Map& kirMap, MHCGenePool& mhcPool, bool hla) {
+Host::Host(int loci_kir, int loci_mhc, double _mutationRate, bool _tuning, int numberOfExtraKirs,Map& kirMap, MHCGenePool& mhcPool, bool hla, int gene_type) {
 
 	InitializeHostParameters(_mutationRate,_tuning, loci_kir, loci_mhc);
 	//fill the mhc Genes
@@ -175,7 +180,7 @@ Host::Host(int loci_kir, int loci_mhc, double _mutationRate, bool _tuning, int n
 		kir.SetPseudogene(pseudo);
 		kir.SetGeneFunctionality(false);
 		kir.SetGeneExpression(false);
-		kir.SetGeneType(0); // 0 for inhibitory receptor!
+		kir.SetGeneType(gene_type); // 0 for inhibitory receptor; 1 for activating receptors!
 		kirGenes.push_back(kir);
 
 	}
@@ -283,7 +288,7 @@ Host::Host(int loci_kir, int loci_mhc, vector<Gene>& mhcGenesParent, GenePool& m
 			Gene mhc1;
 			mhc1.Copy(mhcGenesParent.at(m));
 			mhcGenes.push_back(mhc1);
-			cout << mhc1.GetGeneID() << "_" << mhc1.GetGeneSpecificity() << " ";
+			//cout << mhc1.GetGeneID() << "_" << mhc1.GetGeneSpecificity() << " ";
 		}
 
 		//generate new mhc genes (from the pool) for the new born
@@ -334,7 +339,7 @@ Host::Host(int loci_kir, int loci_mhc, vector<Gene>& mhcGenesParent, GenePool& m
 			Gene mhc1;
 			mhc1.Copy(mhcGenesParent.at(m));
 			mhcGenes.push_back(mhc1);
-			cout << mhc1.GetGeneID() << "_" << mhc1.GetGeneSpecificity() << " ";
+			//cout << mhc1.GetGeneID() << "_" << mhc1.GetGeneSpecificity() << " ";
 		}
 
 	}
@@ -571,13 +576,8 @@ Host& Host:: Copy(Host& rightHandSideHost)
 	this->LOCI_KIR = rightHandSideHost.LOCI_KIR;
 	this->LOCI_MHC = rightHandSideHost.LOCI_MHC;
 	this->mainInfectionType = rightHandSideHost.mainInfectionType;
-	//this->infectionTime = rightHandSideHost.infectionTime;
-	//this->immunityTime = rightHandSideHost.immunityTime;
 	this->mutationRateHost = rightHandSideHost.mutationRateHost;
 	this->viralDeathRate = rightHandSideHost.viralDeathRate;
-	//this->clearanceTime = rightHandSideHost.clearanceTime;
-	//this->ageInfection = rightHandSideHost.ageInfection;
-	//this->ageClearance = rightHandSideHost.ageClearance;
 	this->inhibitoryKIRs = rightHandSideHost.inhibitoryKIRs;
 	this->activatingKIRs = rightHandSideHost.activatingKIRs;
 
@@ -591,39 +591,46 @@ Host& Host:: Copy(Host& rightHandSideHost)
 	{
 		this->kirGenes.push_back(rightHandSideHost.kirGenes.at(i));
 	}
-
-	//copy infections TO DO!!!!!!!!!!!!!!!!!!1
+	
+	list<Infection>::iterator it;
+	for (it = rightHandSideHost.infections.begin() ; it !=rightHandSideHost.infections.end(); it++)
+	{
+		Infection dummy;
+		dummy.Copy((*it));
+		this->infections.push_back(dummy);
+	}
+	//check whether it works! do i need a copy function for the infection class???copy infections TO DO!!!!!!!!!!!!!!!!!!1
 
 
 
 	return *this; // returns self-reference so cascaded assignment works
 }
 
-double Host :: GetIntrinsicDeathRate(vector<double>& rates)
+#include <boost/math/special_functions/round.hpp>
+/*
+double Host :: GetIntrinsicDeathRate(const vector<double>& rates)
 {
-	int a = int(ceil(age));
-	if(a > rates.size())
+	int a = round(age*52.0);
+	if(a >= rates.size())
 		cout << a << "|" << rates.size() << "age" << "ERROR in the deathrate!!!!" <<endl;
-
 	intrinsicDeathRate = rates.at(a) + viralDeathRate;
+// 	cout << "a, age, rate at, intrinsicdeathRates: "<< a << ", " << age << " , " << rates.at(a) << " , "<<intrinsicDeathRate << endl;
 	return intrinsicDeathRate;
 }
 
 double Host :: GetAgeDependentBirthRate(vector<double>& rates)
 {
-	int a = int(ceil(age));
-	if(a > rates.size())
+	int a = round(age*52.0);
+	if(a >= rates.size())
 		cout << a << "|" << rates.size() << "age" << "ERROR in the birth rate!!!!" <<endl;
 	ageDependentBirthrate = rates.at(a);
 	return ageDependentBirthrate;
 }
-
+*/
 /*this function sets the vector of infections*/
 void Host::InfectWith(Virus& newVirus, double simulationTime) //function of the host receiving a new virus
 {
-	//Virus newVirus;
-	//newVirus.Copy(new_virus.pathogen);
-
+	//cout << "do i get stuck here??? InfectWith()"<<endl;
 	Infection newInfection;
 	list<Infection>::iterator it;
 	list<Infection>::iterator end = infections.end();
@@ -700,21 +707,29 @@ void Host::ClearInfection(double simulationTime, Infection& _infection)
 		case 0: //if it's a wild-type virus
 		{
 			if(RandomNumberDouble()<0.85)
+			{
 				_infection.ResetInfection(simulationTime);
+				///cout << "clearing infection"<<endl;
+			}
+				
 		}break;
 		case 1://if it's an mHC downregulating virus
 		{
+
 			if(inhibitoryKIRs) //only if there is at least one functional INHIBITORY KIR, clear the infection
 			{
 				if(RandomNumberDouble()<0.5)
+				{
 					_infection.ResetInfection(simulationTime);
+					//cout << "clearing infection"<<endl;
+				}
+					
 			}
 		}break;
 		case 2: //if it's a decoy virus
 		{
 			int inhibiting_kirs_recognizing_decoy = 0;
 			int activating_kirs_recognizing_decoy = 0;
-			
 			vector<KIRGene>::iterator kirIt;
 			//cout <<"decoy | ";
 			for(kirIt = kirGenes.begin(); kirIt !=kirGenes.end(); kirIt ++)
@@ -771,7 +786,11 @@ void Host :: ClearDecoyWithInhibitoryOnly(int inhibiting_signal, double simulati
 	if(!inhibiting_signal) //if there is no inhibiting signal, receptor didn't bind to the decoy: protection like MHC down
 	{
 		if(RandomNumberDouble()<0.5)
+		{
 			_infection.ResetInfection(simulationTime);
+			cout <<"clearing infection..."<<endl;
+		}
+			
 	}
 }
 
@@ -832,7 +851,7 @@ void Host ::ClearDecoyWithActivatingAndInhibitory(int inhibiting_signal, int act
 Virus& Host :: GetAcuteInfection()
 {
 	list<Infection>:: iterator it;
-	Virus dummy;
+	vector<Virus> randomAcuteInfections;;
 	int inf_type = 0;
 	for(it = infections.begin(); it!= infections.end(); it++)
 	{
@@ -840,9 +859,12 @@ Virus& Host :: GetAcuteInfection()
 		if(inf_type != 1) //if it's not an acute infection
 			continue;
 		else //if it is, return the acute virus
-			return it->pathogen;
+			randomAcuteInfections.push_back(it->pathogen);
 	}
-	return dummy; // in case the list is empty, return an empty virus... shoudln't happen anyway! if the list is empty, this function should not be called!
+	
+	int random = RandomNumber(0,randomAcuteInfections.size()-1);
+	//cout <<"do i get stuck here? GetAcuteInfection!!! "<<endl;
+	return randomAcuteInfections.at(random); // in case the list is empty, return an empty virus... shoudln't happen anyway! if the list is empty, this function should not be called!
 }
 
 /*This functions returns a ramdonly chose chronic virus infection  !!!!!! WHAT IS HAPPENING TO THIS VECTOR???? SHALL I DELETE IT SOMEHOW????*/
@@ -854,30 +876,40 @@ Virus& Host :: GetChronicInfection()
 	for(it = infections.begin(); it!= infections.end(); it++)
 	{
 		inf_type = it->GetInfectionType();
+		//cout << inf_type << "infection type! "<<endl;
 		if(inf_type!=2) //if it's not chronic
 			continue;
 		else
 			randomChronicInfections.push_back(it->pathogen);
 	}
-	int random = RandomNumber(0,randomChronicInfections.size());
+	int random = RandomNumber(0,randomChronicInfections.size()-1);
+	//cout << randomChronicInfections.size() << "   size....." <<endl;
 	return randomChronicInfections.at(random);
 }
 
 void Host :: UpdateParameters(double timeStep, double simulationTime)
 {
 	age += (timeStep/YEAR);
+	
 	//update (get) all the information for each infection
-	list<Infection>::iterator it;
-	for(it = infections.begin(); it != infections.end(); it ++)
+	double vl = 0.0;
+	list<Infection>::iterator it = infections.begin();
+	while(it != infections.end())
 	{
 		it->SetInfectionType(simulationTime);
-		if(it->IsCured()) //if the infection has been cleared again,remove it from the infections list!
-			infections.erase(it);
-
-		if(it->GetViralLoad() > viralDeathRate)
-			viralDeathRate = it->GetViralLoad();
-		dead=it->GetDeadFlag();
+		if(it->IsCured())
+		{//if the infection has been cleared again,remove it from the infections list!
+			it = infections.erase(it);
+			continue;
+		}
+		if(it->GetViralLoad() > vl)
+			vl = it->GetViralLoad();
+		if(it->GetDeadFlag()==true)
+			SetDead();
+		
+		it++;
 	}
+	viralDeathRate = vl;
 }
 
 //functions for SAVING PARAMETERS, BACKUP, etc
@@ -897,7 +929,7 @@ void Host::SaveGenes(fstream& outfile)
 		//outfile << kirGenes.at(i).GetGeneID() << "\t";
 	}
 	int functional_kirs = inhibitoryKIRs + activatingKIRs;
-	outfile << functional_kirs << "\t"<< CountExpressedKIRs() <<"\n";
+	outfile << functional_kirs << "\t"<< CountExpressedKIRs() << "\t" << Get_Host_ID()<<"\n";
 }
 
 void Host ::SaveParameters(fstream& outfile)
@@ -908,9 +940,19 @@ void Host ::SaveParameters(fstream& outfile)
 	{
 		 infIt->SaveParametersInfection(outfile);
 	}
-	outfile <<  "\n";
+	outfile << Get_Host_ID() <<  "\n";
 }
 
+void Host :: PrintParametersHost()
+{
+	cout <<age << "\t"<<infections.size()<< "\t"<< acute << chronic << immune << "\t";
+	list<Infection>::iterator infIt;
+	for(infIt = infections.begin(); infIt!=infections.end(); infIt++)
+	{
+		infIt->PrintParameters();
+	}
+	cout <<  "\n";
+}
 
 void Host :: SaveAgeDyingHost(fstream& outfile)
 {
@@ -1015,6 +1057,7 @@ void Infection :: SetInfectionParameters(state _type)
 	immunityTime = 0.0;
 	clearanceTime = 0.0;
 	deadFlagForHost = false;
+	//cout << incubating  <<acute<< chronic<< memory<< cleared <<endl;
 	//ageInfection = 0.0;
 	//ageClearance = 0.0;
 }
@@ -1061,6 +1104,7 @@ void Infection::ResetInfection(double simulationTime)
 	pathogen.SetViralLoad(0.0);
 	infectionTime = 0.0;
 	clearanceTime = simulationTime;
+	deadFlagForHost = false;
 }
 
 
@@ -1082,10 +1126,10 @@ void Infection::SetInfectionType(double simulationTime)
 		if((simulationTime -infectionTime) > 1.0*WEEK+ 4.0*WEEK*pathogen.GetLifeTimeVirus())
 		{
 			if(pathogen.IsOnlyAcute())
-				deadFlagForHost = true;//STILL NEED TO IMPLEMENT THIS IN THE HOST!!!!!!!!
+				deadFlagForHost = true;
 			else
 			{
-				pathogen.SetViralLoad(0.6*pathogen.GetViralLoad());// STILL NEED TO IMPLEMENT THIS IN THE HOST!!!!!!!!
+				pathogen.SetViralLoad(0.6*pathogen.GetOriginalViralLoad());
 				infectionType = chronic;
 			}
 		}
@@ -1112,7 +1156,12 @@ void Infection::SetInfectionType(double simulationTime)
 		infectionType = cleared;
 	}
 }
-
+void Infection::PrintParameters()
+{
+	cout <<"infectionType infectionTime clearanceTime immunityTime and other viral parameters"<<endl;
+	cout << infectionType<< "\t"<< infectionTime << "\t"<<clearanceTime << "\t"<<immunityTime << "\t";
+	pathogen.PrintParametersVirus();
+}
 
 void Infection ::SaveParametersInfection(fstream& outfile)
 {
@@ -1151,6 +1200,20 @@ string Infection::RestoreInfection(stringstream& siline)
 }
 
 
+/*This function performs a deep copy*/
+Infection & Infection::Copy(Infection& rhsInfection)
+{
+	// checking if it is a self-assignment
+	if(this == &rhsInfection)
+		return *this;
+	//copying member variables
+	this->infectionType = rhsInfection.infectionType;
+	this->infectionTime = rhsInfection.infectionTime;
+	this->clearanceTime = rhsInfection.clearanceTime;
+	this->immunityTime = rhsInfection.immunityTime;
+	this->pathogen.Copy(rhsInfection.pathogen);
+	return *this;
+}
 
 
 /*

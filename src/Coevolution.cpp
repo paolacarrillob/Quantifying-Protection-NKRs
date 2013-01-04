@@ -8,10 +8,12 @@
 
 #include <iostream>
 #include "World.h"
+#include "Exceptions.h"
 using namespace std;
 
 int main(int argc, char*argv[])
 {
+	
 	/*string parameterFile(argv[1]);
 	World oneWorld;
 	oneWorld.LoadParameterFile(parameterFile);
@@ -23,96 +25,58 @@ int main(int argc, char*argv[])
 		cout << (*it).first << "|" << (*it).second.first <<"|"<< (*it).second.second <<endl;
 
 	}
-
-	int randomHost = RandomNumber(0, oneWorld.hosts.size()-1);
-	oneWorld.ShuffleHosts();
+	
 	Host dummy;
 	dummy.Copy(oneWorld.hosts.at(0));
-	cout << "educating dummy................."<<endl;
-	dummy.EducateKIRs();
-	exit(0);
-
-	Host baby_host;
-	oneWorld.Birth(0,baby_host);
-	dummy.CountFunctionalKIRs();
-	int y = dummy.CountExpressedKIRs();
-	//cout << "number of FunctionalKIRs: " << x <<endl;
-	cout << "number of KIRs: " << y <<endl;
-	dummy.InfectWith(oneWorld.decoyVirus,0.0);
-	cout << "virus type: "<<oneWorld.decoyVirus.GetVirusType()<<endl;
-	dummy.ClearInfection(1.0);
-	cout << "virus type: "<<oneWorld.decoyVirus.GetVirusType()<<endl;
-
+	dummy.InfectWith(oneWorld.downregulatingVirus, 0.1);	
+	//dummy.InfectWith(oneWorld.decoyVirus, 0.1);
+	cout << "virus type: "<<oneWorld.nastyVirus.GetVirusType()<<endl;
+	cout << "virus type in host: " << dummy.infections.size() <<endl;
+	//oneWorld.decoyVirus.PrintParametersVirus();
+	//cout <<"printing dummy infection:\n";
+	//stupidvirus.PrintParametersVirus();
+	
+	list<Infection>::iterator it;
+	for(it = dummy.infections.begin(); it != dummy.infections.end(); it++)
+	{
+		cout << "...." <<endl;
+		it->PrintParameters();
+		dummy.ClearInfection(2.0, (*it));
+		it->PrintParameters();
+		it->SetInfectionType(2.1);
+		it->PrintParameters();
+	}
+	dummy.UpdateParameters(0.01, 2.1);
+	cout << dummy.GetMainInfectionType() <<endl;
+	dummy.UpdateParameters(0.01, 2.1+4*WEEK);
+	cout << dummy.GetMainInfectionType() <<endl;	
+	dummy.UpdateParameters(0.01, 2.1+6*WEEK);
+	cout << dummy.GetMainInfectionType() <<endl;
+	//cout << "virus type: "<<oneWorld.decoyVirus.GetVirusType()<<endl;
 	//oneWorld.Escape(0);
-	dummy.ClearInfection(1.0);
-
-
-	for(unsigned int i = 0; i< dummy.kirGenes.size(); i++)
+	//dummy.ClearInfection(1.0);
+	int infectionState = dummy.GetMainInfectionType();
+	cout << "infection state form dummy getMainInfectionType(): " << infectionState <<endl;
+	Virus stupidvirus;
+	switch(infectionState)
 	{
-		cout << dummy.kirGenes.at(i).GetGeneID()<<"_"<<dummy.kirGenes.at(i).GetGeneSpecificity() << " ";
-	}
-
-	cout << endl;
-	cout <<endl;
-	cout <<"dummy: "<<endl;
-	for(unsigned int i = 0; i< dummy.mhcGenes.size(); i++)
-	{
-		cout << dummy.mhcGenes.at(i).GetGeneID()<<"_"<<dummy.mhcGenes.at(i).GetGeneSpecificity() << " ";
-	}
-
-	cout << endl;
-	cout <<"baby: "<<endl;
-	for(unsigned int i = 0; i< baby_host.mhcGenes.size(); i++)
-	{
-		cout << baby_host.mhcGenes.at(i).GetGeneID()<<"_"<<baby_host.mhcGenes.at(i).GetGeneSpecificity() << " ";
-	}
-
-	cout << endl;
-	for(unsigned int i=0; i< dummy.kirGenes.size(); i++)
-	{
-		if(RandomNumberDouble() <0.8)
+		case 2: 
 		{
-		dummy.kirGenes.at(i).Mutate();
-		}
-		cout << dummy.kirGenes.at(i).GetGeneID()<<"_"<<dummy.kirGenes.at(i).GetGeneSpecificity() << " ";
-
+			stupidvirus = dummy.GetChronicInfection();			
+		}break;
+		case 1:
+		{
+			stupidvirus = dummy.GetAcuteInfection();
+		}break;
 	}
-	cout <<endl;
+	oneWorld.hosts.at(2).PrintParametersHost();
 
-	KIRGene mygene(5);
-	cout << mygene.GetGeneID()<< " | " << mygene.GetGeneSpecificity() << " | ";
-	mygene.PrintBits();
-	mygene.PointMutation();
-	cout << mygene.GetGeneID()<< " | " << mygene.GetGeneSpecificity()<< " | ";
-	mygene.PrintBits();
-
+	oneWorld.hosts.at(2).InfectWith(stupidvirus, 2.1+7*WEEK);
+	oneWorld.hosts.at(2).PrintParametersHost();
 	exit(0);
-
-	KIRGene bla(3);
-	KIRGene blub(6);
-
-	if(!(bla==blub))
-	{
-		bla.PrintBits();
-		blub.PrintBits();
-	}
-
-
-	KIRGene bla;
-	cout << bla.GetGeneID()<< " | " << bla.GetGeneSpecificity()<< " | "<< bla.GetGeneType() << " | " << bla.GetGeneMid() << " | ";
-	bla.PrintBits();
-	KIRGene blub(5);
-	bla.Copy(blub);
-	cout << bla.GetGeneID()<< " | " << bla.GetGeneSpecificity()<< " | "<< bla.GetGeneType() << " | "<< bla.GetGeneMid() << " | ";
-	bla.PrintBits();
-	bla.MutateReceptorType();
-	cout << bla.GetGeneID()<< " | " << bla.GetGeneSpecificity()<< " | "<< bla.GetGeneType() << " | "<< bla.GetGeneMid() << " | ";
-	bla.PrintBits();
-
-
-
-	exit(0);
-*/
+	
+*/	
+	// To test: copy function of host: is it working??? TransmitInfection of host; Infect event; Escape event.... right now I cannot think of anything else that might be causing the mistake!!!
 
 
 	//ACTUAL SIMULATION STARTING!
@@ -126,7 +90,8 @@ int main(int argc, char*argv[])
 	char buffer[512];
 	//Ouss: Use boost library here for boost:filesystem to delete files... etc
 	cout <<"deleting old files ..."<<endl;
-	sprintf(buffer, "rm *.txt");
+	//sprintf(buffer, "rm *.txt");
+	sprintf(buffer, "rm *.log");
 	system(buffer);
 
 	string parameterFile(argv[1]);
@@ -142,7 +107,19 @@ int main(int argc, char*argv[])
 	}
 
 	World theWorld;
-	theWorld.LoadParameterFile(parameterFile);
+	try
+	{
+		theWorld.LoadParameterFile(parameterFile);
+	}
+	catch (OussException& e ) {
+		cout << e.GetErrorData() << endl;
+	}
+	catch (...)
+	{
+		cout << "unknown exception thrown" <<endl;
+	}
+	
+	//theWorld.LoadParameterFile(parameterFile);
 	cout <<"welcome, hello" << endl;
 	if(!loadingBackup)
 	{
