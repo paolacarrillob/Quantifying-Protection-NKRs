@@ -46,34 +46,6 @@ int main(int argc, char*argv[])
 		it->SetInfectionType(2.1);
 		it->PrintParameters();
 	}
-	dummy.UpdateParameters(0.01, 2.1);
-	cout << dummy.GetMainInfectionType() <<endl;
-	dummy.UpdateParameters(0.01, 2.1+4*WEEK);
-	cout << dummy.GetMainInfectionType() <<endl;	
-	dummy.UpdateParameters(0.01, 2.1+6*WEEK);
-	cout << dummy.GetMainInfectionType() <<endl;
-	//cout << "virus type: "<<oneWorld.decoyVirus.GetVirusType()<<endl;
-	//oneWorld.Escape(0);
-	//dummy.ClearInfection(1.0);
-	int infectionState = dummy.GetMainInfectionType();
-	cout << "infection state form dummy getMainInfectionType(): " << infectionState <<endl;
-	Virus stupidvirus;
-	switch(infectionState)
-	{
-		case 2: 
-		{
-			stupidvirus = dummy.GetChronicInfection();			
-		}break;
-		case 1:
-		{
-			stupidvirus = dummy.GetAcuteInfection();
-		}break;
-	}
-	oneWorld.hosts.at(2).PrintParametersHost();
-
-	oneWorld.hosts.at(2).InfectWith(stupidvirus, 2.1+7*WEEK);
-	oneWorld.hosts.at(2).PrintParametersHost();
-	exit(0);
 	
 */	
 	// To test: copy function of host: is it working??? TransmitInfection of host; Infect event; Escape event.... right now I cannot think of anything else that might be causing the mistake!!!

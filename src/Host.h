@@ -129,7 +129,7 @@ public:
 	//double GetIntrinsicDeathRate(const vector<double>& rates);
 	//double GetAgeDependentBirthRate(vector<double>& rates);
 
-	void InfectWith(Virus& nastyVirus, double simulationTime); //works
+	void InfectWith(Virus& nastyVirus, double simulationTime, int maxNumberInfections); //works
 	int IsInfected();
 	void ClearInfection(double simulationTime, Infection& _infection);
 	void ClearDecoyWithInhibitoryOnly(int inhibiting_signal, double simulationTime, Infection& _infection);

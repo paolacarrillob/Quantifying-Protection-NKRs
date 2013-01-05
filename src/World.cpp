@@ -65,7 +65,8 @@ void World :: LoadParameterFile(const string& fileName)
 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 //to reach steady state, that is why MHC downregulation
 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 //should come even later
 */
-	timeDecoy = timeMHCDownregulation + 100000*YEAR;
+	//timeDecoy = timeMHCDownregulation + 100000*YEAR;
+	timeDecoy = timeIntroducingInfection + 500*YEAR;
 	outfileRate = 1.0/(t_outfile*YEAR);
 	backupRate = 1.0/(t_backup*YEAR);
 	populationSizeRate = 1.0/(t_popFile*YEAR);
@@ -264,7 +265,7 @@ void World::Infect(int index)
 						{
 							//get the acute virus
 							stupidVirus.Copy(hosts.at(randomindex).GetAcuteInfection());
-							hosts.at(index).InfectWith(stupidVirus, simulationTime);
+							hosts.at(index).InfectWith(stupidVirus, simulationTime, maxNumberOfInfectionsPerHost);
 						}
 
 					}break;
@@ -274,7 +275,7 @@ void World::Infect(int index)
 						{
 							// get the chronic virus
 							stupidVirus.Copy(hosts.at(randomindex).GetChronicInfection());
-							hosts.at(index).InfectWith(stupidVirus, simulationTime);
+							hosts.at(index).InfectWith(stupidVirus, simulationTime, maxNumberOfInfectionsPerHost);
 						}
 					}break;
 					//default: cout <<"ERROR!!!!!! shouldn't happen!" <<endl; exit(1);
@@ -368,7 +369,7 @@ void World::Simulate()
 	//string populationFile(populationFileChars);
 	
 	populationSize.open(populationFile.c_str());
-	populationSize <<"#time\tpopSize\tbabies\tdead\tacute\tchronic\timmune\tmhc_down\tdecoy\n";
+	populationSize <<"#time\tpopSize\tbabies\tdead\tacute\tchronic\timmune\twt\tmhc_down\tdecoy\n";
 	
 	double lastPopulationOutfileTime = 0.0;
 	double lastOutfileTime = 0.0;
@@ -523,7 +524,7 @@ void World ::IntroduceVirus(const string& secondVirus)
 					 {
 					 randomindex = RandomNumber(0,hosts.size()-1);
 					 }
-					hosts.at(randomindex).InfectWith(nastyVirus, simulationTime);
+					hosts.at(randomindex).InfectWith(nastyVirus, simulationTime, maxNumberOfInfectionsPerHost);
 				}
 			}
 			
@@ -538,7 +539,7 @@ void World ::IntroduceVirus(const string& secondVirus)
 					for(int i= 0; i<0.5* hosts.size(); i++)
 					{
 						int randomindex = RandomNumber(0,hosts.size()-1);
-						hosts.at(randomindex).InfectWith(downregulatingVirus, simulationTime);
+						hosts.at(randomindex).InfectWith(downregulatingVirus, simulationTime, maxNumberOfInfectionsPerHost);
 					}
 				}
 				if(secondVirus.compare(decoyVirusString) == 0)
@@ -551,7 +552,7 @@ void World ::IntroduceVirus(const string& secondVirus)
 					{
 						int randomindex2 = RandomNumber(0,hosts.size()-1);
 						decoyVirus.mhcDecoy.SetGeneID(mhcID);
-						hosts.at(randomindex2).InfectWith(decoyVirus, simulationTime);
+						hosts.at(randomindex2).InfectWith(decoyVirus, simulationTime, maxNumberOfInfectionsPerHost);
 					}
 					
 				}
@@ -567,7 +568,7 @@ void World ::IntroduceVirus(const string& secondVirus)
 				for(int i= 0; i<0.5* hosts.size(); i++)
 				{
 					int randomindex = RandomNumber(0,hosts.size()-1);
-					hosts.at(randomindex).InfectWith(downregulatingVirus, simulationTime);
+					hosts.at(randomindex).InfectWith(downregulatingVirus, simulationTime, maxNumberOfInfectionsPerHost);
 				}
 			}
 			
@@ -583,7 +584,7 @@ void World ::IntroduceVirus(const string& secondVirus)
 				{
 					int randomindex2 = RandomNumber(0,hosts.size()-1);
 					decoyVirus.mhcDecoy.SetGeneID(mhcID);
-					hosts.at(randomindex2).InfectWith(decoyVirus, simulationTime);
+					hosts.at(randomindex2).InfectWith(decoyVirus, simulationTime, maxNumberOfInfectionsPerHost);
 				}
 			}			
 		}break;
@@ -618,9 +619,21 @@ void World::TrackInfectedIndividuals()
 			int virus_type = it->pathogen.GetVirusType();
 			switch(virus_type)
 			{
-				case 0:{wildtype++;}break;
-				case 1:{downregulating++;}break;
-				case 2:{decoy++;}break;
+				case 0:
+				{
+					if(inf_type!=3)
+						wildtype++;
+				}break;
+				case 1:
+				{
+					if(inf_type != 3) //count them only if they are not immune!
+						downregulating++;
+				}break;
+				case 2:
+				{
+					if(inf_type !=3)
+						decoy++;
+				}break;
 				default: cout <<"ERROR!!!!!! COUNTING OTHER VIRUSES! shouldn't happen!" <<endl; exit(1);
 			}
 		}

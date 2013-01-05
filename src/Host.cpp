@@ -628,7 +628,7 @@ double Host :: GetAgeDependentBirthRate(vector<double>& rates)
 }
 */
 /*this function sets the vector of infections*/
-void Host::InfectWith(Virus& newVirus, double simulationTime) //function of the host receiving a new virus
+void Host::InfectWith(Virus& newVirus, double simulationTime, int maxNumberInfections) //function of the host receiving a new virus
 {
 	//cout << "do i get stuck here??? InfectWith()"<<endl;
 	Infection newInfection;
@@ -642,19 +642,22 @@ void Host::InfectWith(Virus& newVirus, double simulationTime) //function of the 
 	}
 	else //but if the host IS infected with some viruses
 	{
-		int howManyInfections = 0;
-		for (it = infections.begin(); it != end; it++)
+		if(infections.size()<maxNumberInfections) //check first whether it is already at its maximum
 		{
-			if(!it->IsPathogenNew(newVirus)) // if the virus is already there (i.e. as incubating, acute, chronic or immune) ignore it
-				continue;
-			else //but if it's not the same, keep track of how many infections are different from the new one
-				howManyInfections++;
-		}
-
-		if(howManyInfections == infections.size()) // if the new virus is different from ALL infections present in that host
-		{
-			newInfection.TransmitInfection(newVirus,simulationTime);//set the parameters to the new infection!
-			infections.push_back(newInfection);
+			int howManyInfections = 0;
+			for (it = infections.begin(); it != end; it++)
+			{
+				if(!it->IsPathogenNew(newVirus)) // if the virus is already there (i.e. as incubating, acute, chronic or immune) ignore it
+					continue;
+				else //but if it's not the same, keep track of how many infections are different from the new one
+					howManyInfections++;
+			}
+			
+			if(howManyInfections == infections.size()) // if the new virus is different from ALL infections present in that host
+			{
+				newInfection.TransmitInfection(newVirus,simulationTime);//set the parameters to the new infection!
+				infections.push_back(newInfection);
+			}
 		}
 	}
 }
