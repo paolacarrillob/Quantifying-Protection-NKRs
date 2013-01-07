@@ -65,8 +65,7 @@ void World :: LoadParameterFile(const string& fileName)
 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 //to reach steady state, that is why MHC downregulation
 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 //should come even later
 */
-	//timeDecoy = timeMHCDownregulation + 100000*YEAR;
-	timeDecoy = timeIntroducingInfection + 500*YEAR;
+	timeDecoy = timeMHCDownregulation + 100000*YEAR;
 	outfileRate = 1.0/(t_outfile*YEAR);
 	backupRate = 1.0/(t_backup*YEAR);
 	populationSizeRate = 1.0/(t_popFile*YEAR);
