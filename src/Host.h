@@ -109,7 +109,7 @@ public:
 	
 	Host(int loci_kir, int loci_mhc, vector<Gene>& mhcGenesParent, GenePool& mhcPool, bool dist,
 			vector<KIRGene>& kirGenesMother, vector<KIRGene>& kirGenesFather, double _mutationRate,
-			bool _tuning,int numberOfExtraKirs, Map& kirMap, int mutationType);
+			bool _tuning,int numberOfExtraKirs, Map& kirMap, int mutationType, int gene_type);
 	virtual ~Host(){};
 	void SetDead(){dead = true;}
 	bool IsDead()const{return dead;}
@@ -117,7 +117,7 @@ public:
 	void InitializeHostParameters(double mutationRate, bool _tuning, int kirloci,int loci_mhc);
 	void SetHostParameters(bool t, double mut, int inftyp, double inftim, double viraldeathm ,double clrtim);
 	void EducateKIRs(); //works with activating receptors also!
-	void MutateGenes(int mutationType, KIRGene& kir_hap2, Map& kirMap, GenePool& mhcPool); //works
+	void MutateGenes(int mutationType, KIRGene& kir_hap2, Map& kirMap, GenePool& mhcPool, int gene_type); //works
 
 	void ExpressKIRs(int numberOfExpressedKirs); //ok
 	double GetAge()const{return age;}

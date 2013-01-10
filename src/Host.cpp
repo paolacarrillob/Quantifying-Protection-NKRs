@@ -200,7 +200,7 @@ Host::Host(int loci_kir, int loci_mhc, double _mutationRate, bool _tuning, int n
 }
 
 /*Constructs a baby host out of two parents*/
-Host::Host(int loci_kir, int loci_mhc, vector<Gene>& mhcGenesParent, GenePool& mhcPool, bool dist, vector<KIRGene>& kirGenesMother, vector<KIRGene>& kirGenesFather,double _mutationRate, bool _tuning, int numberOfExtraKirs, Map& kirMap, int mutationType)
+Host::Host(int loci_kir, int loci_mhc, vector<Gene>& mhcGenesParent, GenePool& mhcPool, bool dist, vector<KIRGene>& kirGenesMother, vector<KIRGene>& kirGenesFather,double _mutationRate, bool _tuning, int numberOfExtraKirs, Map& kirMap, int mutationType, int gene_type)
 //Host::Host(int loci_kir, vector<Gene>& mhcGenesParent, GenePool& mhcPool, bool dist, GenePool& kirPool, vector<Gene>& kirGenesMother, vector<Gene>& kirGenesFather, int specificity, double _mutationRate, bool _tuning, int numberOfExtraKirs)
 {	//to create a NEW host: the haplotypes of KIR of BOTH parents are needed. Besides one MHC haplotype of one parent plus one of the pool
 
@@ -267,7 +267,7 @@ Host::Host(int loci_kir, int loci_mhc, vector<Gene>& mhcGenesParent, GenePool& m
 			//MUTATION!
 			if(RandomNumberDouble() < mutationRateHost)
 			{
-				MutateGenes(mutationType, kir_hap2, kirMap, mhcPool);
+				MutateGenes(mutationType, kir_hap2, kirMap, mhcPool, gene_type);
 			}
 			kirGenes.push_back(kir_hap2);
 		}
@@ -277,7 +277,7 @@ Host::Host(int loci_kir, int loci_mhc, vector<Gene>& mhcGenesParent, GenePool& m
 			kir_hap1.Copy(kirGenesMother.at(j));
 			if(RandomNumberDouble() < mutationRateHost)
 			{
-				MutateGenes(mutationType, kir_hap1, kirMap, mhcPool);
+				MutateGenes(mutationType, kir_hap1, kirMap, mhcPool, gene_type);
 			}
 			kirGenes.push_back(kir_hap1);
 		}
@@ -308,7 +308,7 @@ Host::Host(int loci_kir, int loci_mhc, vector<Gene>& mhcGenesParent, GenePool& m
 			kir_hap1.Copy(kirGenesMother.at(i));
 			if(RandomNumberDouble() < mutationRateHost)
 			{
-				MutateGenes(mutationType, kir_hap1, kirMap, mhcPool);
+				MutateGenes(mutationType, kir_hap1, kirMap, mhcPool, gene_type);
 			}
 			kirGenes.push_back(kir_hap1);
 		}
@@ -318,7 +318,7 @@ Host::Host(int loci_kir, int loci_mhc, vector<Gene>& mhcGenesParent, GenePool& m
 			kir_hap2.Copy(kirGenesFather.at(j));
 			if(RandomNumberDouble() < mutationRateHost)
 			{
-				MutateGenes(mutationType, kir_hap2, kirMap, mhcPool);
+				MutateGenes(mutationType, kir_hap2, kirMap, mhcPool, gene_type);
 			}
 			kirGenes.push_back(kir_hap2);
 		}
@@ -369,7 +369,7 @@ void Host::InitializeHostParameters(double mutationRate, bool _tuning, int loci_
 
 }
 
-void Host :: MutateGenes(int mutationType, KIRGene& kir_hap2, Map& kirMap, GenePool& mhcPool)
+void Host :: MutateGenes(int mutationType, KIRGene& kir_hap2, Map& kirMap, GenePool& mhcPool, int gene_type)
 {
 	if(mutationType == 1)//pick another molecules as mutation
 	{
@@ -377,7 +377,7 @@ void Host :: MutateGenes(int mutationType, KIRGene& kir_hap2, Map& kirMap, GeneP
 		if(!kirMap.IsGeneInMap(newGene))
 		{
 			kirMap.FillMap(mhcPool, newGene);
-			//kir_hap2.SetGeneType(1);////to test just what happens if i ONLY have activating receptors!
+			kir_hap2.SetGeneType(gene_type);////to test just what happens if i ONLY have activating receptors!
 			kir_hap2.Copy(newGene);
 		}
 
@@ -414,10 +414,10 @@ void Host :: MutateGenes(int mutationType, KIRGene& kir_hap2, Map& kirMap, GeneP
 			//kir_hap2.PrintBits();
 
 		}
-		if(RandomNumberDouble()<0.2)
+		/*if(RandomNumberDouble()<0.2)
 		{
 			kir_hap2.MutateReceptorType();
-		}
+		}*/
 	}
 }
 

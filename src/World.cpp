@@ -202,7 +202,7 @@ bool World::Birth(int index,unsigned long int next_id)//, Host& baby_host)
 		else
 			parent = randomindex;
 		//cout << "do i get stuck here??? birth event!"<< endl;
-		Host testHost(KIRLoci,MHCLoci, hosts.at(parent).mhcGenes ,MHCPool, HLA_C,/*KIRPool, */hosts.at(index).kirGenes,hosts.at(randomindex).kirGenes, mutationRate,education,expressionExtraKIRs, KIRGenesMap, mutationTypeHost);
+		Host testHost(KIRLoci,MHCLoci, hosts.at(parent).mhcGenes ,MHCPool, HLA_C,/*KIRPool, */hosts.at(index).kirGenes,hosts.at(randomindex).kirGenes, mutationRate,education,expressionExtraKIRs, KIRGenesMap, mutationTypeHost, KIRGeneType);
 		//cout << "do i get stuck here??? birth event!"<< endl;
 		testHost.Set_Host_ID(next_id);
 		hosts.push_back(testHost);
