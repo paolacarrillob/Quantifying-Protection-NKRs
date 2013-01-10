@@ -471,7 +471,7 @@ void World::Simulate()
 		}
 		TrackInfectedIndividuals();
 
-		cout<< "Time: " << simulationTime/YEAR <<endl;
+		//cout<< "Time: " << simulationTime/YEAR <<endl;
 		// printing out the gene files
 		bool timeToPrintOut = floor((simulationTime-lastOutfileTime)*outfileRate)>0;
 		if(simulationTime == 0.0 || timeToPrintOut)
@@ -527,7 +527,7 @@ void World ::IntroduceVirus(const string& secondVirus)
 				}
 			}
 			
-		}
+		}break;
 		case 2: 
 		{
 			if(floor(timeDecoy -simulationTime) > 0 && floor(timeDecoy -simulationTime) < 3.0*WEEK)
