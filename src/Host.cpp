@@ -377,7 +377,7 @@ void Host :: MutateGenes(int mutationType, KIRGene& kir_hap2, Map& kirMap, GeneP
 		if(!kirMap.IsGeneInMap(newGene))
 		{
 			kirMap.FillMap(mhcPool, newGene);
-			kir_hap2.SetGeneType(gene_type);////to test just what happens if i ONLY have activating receptors!
+			newGene.SetGeneType(gene_type);////to test just what happens if i ONLY have activating receptors!
 			kir_hap2.Copy(newGene);
 		}
 
