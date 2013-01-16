@@ -54,7 +54,7 @@ protected:
 	int geneID;
 	int specificity;
 	bool pseudoGene;
-	int mID;
+	unsigned long int mID;
 
 
 };

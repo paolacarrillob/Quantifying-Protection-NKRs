@@ -764,21 +764,22 @@ void Host::ClearInfection(double simulationTime, Infection& _infection)
 			
 			/*This is with different of protection depending which receptors we have. Above is the
 			 *same... I don't completely agree, but let's see what happens! -> try out the new one!
-			 *
-			 * if(inhibitoryKIRs && !activatingKIRs) //if that host has ONLY inhibitory receptors
+			 **/
+
+			if(inhibitoryKIRs && !activatingKIRs) //if that host has ONLY inhibitory receptors
 			 {
-			 ClearDecoyWithInhibitoryOnly(inhibiting_kirs_recognizing_decoy, simulationTime);
+			 ClearDecoyWithInhibitoryOnly(inhibiting_kirs_recognizing_decoy, simulationTime, _infection);
 			 }
 			 
 			 if(!inhibitoryKIRs && activatingKIRs) //if that host has ONLY activating receptors
 			 {
-			 ClearDecoyWithActivatingOnly(activating_kirs_recognizing_decoy, simulationTime);
+			 ClearDecoyWithActivatingOnly(activating_kirs_recognizing_decoy, simulationTime, _infection);
 			 }
 			 
 			 if(inhibitoryKIRs && activatingKIRs) //if that host has both types of receptors
 			 {
-			 ClearDecoyWithActivatingAndInhibitory(inhibiting_kirs_recognizing_decoy, activating_kirs_recognizing_decoy, simulationTime);
-			 }*/
+			 ClearDecoyWithActivatingAndInhibitory(inhibiting_kirs_recognizing_decoy, activating_kirs_recognizing_decoy, simulationTime, _infection);
+			 }
 		}break;
 	}
 }
