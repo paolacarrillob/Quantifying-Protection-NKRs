@@ -85,6 +85,7 @@ public:
 	void MutateReceptorType();//works
 	bool IsInhibitory();
 	bool IsActivating();
+	void PrintGenes();
 
 
 protected:
@@ -133,17 +134,18 @@ public:
 	Map(){};
 	virtual ~Map(){};
 	void FillMap(GenePool& mhcpool, KIRGene& gene); //works
-	bool IsGeneInMap(Gene& gene); //works
+	bool IsGeneInMap(KIRGene& gene); //works
 	unsigned int GetMapSize(){return mapGenes.size();} //works
 
 	string RestoreMap(stringstream& smline); //works
 	void SaveBackupMap(fstream& backupFile); //works
 
-	multimap<int, pair<int, int > >& GetMap() {return mapGenes;};
+	multimap< pair< int,int>,  pair<int, int > >& GetMap() {return mapGenes;};
 
 //protected:
-	multimap <int, pair <int,int> > mapGenes;
+	multimap <pair< int,int>, pair <int,int> > mapGenes; //the map has the design: (geneID,gene_type), (L, mID)
 };
+
 
 #endif /* GENES_H_ */
 

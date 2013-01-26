@@ -68,30 +68,38 @@ void Map::FillMap(GenePool& mhcpool, KIRGene& kirGene)
 	//set the Gene pseudo
 	kirGene.SetPseudogene(M_id);
 
+	//cout <<"before the map" <<endl;
 	//save the infos in pairs into a map
 	if(!IsGeneInMap(kirGene))
 	{
 		pair <int, int> genePhenotype;
+		pair <int, int> geneIDAndType;
 		genePhenotype = make_pair(kirGene.GetGeneSpecificity(), M_id);
-		mapGenes.insert(make_pair(kirGene.GetGeneID(),genePhenotype)); //!!! i don't completely
+		geneIDAndType = make_pair(kirGene.GetGeneID(), kirGene.GetGeneType());
+		mapGenes.insert(make_pair(geneIDAndType,genePhenotype)); //!!! i don't completely
 																// understand why I need to make_pair of (int and pair)!
+		//cout << kirGene.GetGeneID() << "|" << kirGene.GetGeneType()<< "|" << kirGene.GetGeneSpecificity() << "|" << kirGene.GetGeneMid() << endl;
 	}
 
-	/*
-	 * for accessing the entries of the map!
-	map< int, pair <int, int> > ::iterator it;
+		//cout <<"after the map" <<endl;
+	 //* for accessing the entries of the map!
+	/*map< pair< int, int> , pair <int, int> > ::iterator it;
 	for(it = mapGenes.begin(); it != mapGenes.end(); it ++)
 	 {
-		cout << (*it).first << "|" << (*it).second.first <<"|"<< (*it).second.second <<endl;
+		cout << (*it).first.first << "|" << (*it).first.second << "|" << (*it).second.first <<"|"<< (*it).second.second <<endl;
 
 	 }*/
 }
 
+
 /*This function determines if the map contains a particular gene.*/
-bool Map ::IsGeneInMap(Gene& gene)
+
+bool Map ::IsGeneInMap(KIRGene& gene)
 {
 	int geneNumber = gene.GetGeneID();
-	map<int, pair <int, int> > :: iterator it = mapGenes.find(geneNumber);
+	int receptorType = gene.GetGeneType();
+	pair<int, int> geneNrPlusType= make_pair(geneNumber, receptorType);
+	map<pair<int,int>, pair <int, int> > :: iterator it = mapGenes.find(geneNrPlusType);
 	if(it != mapGenes.end()) //if it finds the gene
 		return true;
 	else
@@ -102,19 +110,23 @@ bool Map ::IsGeneInMap(Gene& gene)
 //restoring the map from the file...
 string Map :: RestoreMap(stringstream& smline)
 {
-	Gene dummy;
+	KIRGene dummy;
 
 	int gene_id;
+	int gene_type;
 	int m_id;
 	int L;
 	smline >> gene_id;
+	smline >> gene_type;
 	smline >> L;
 	smline >> m_id;
 	pair <int, int> genePhenotype;
+	pair <int,int> geneIDAndType;
 	dummy.SetGeneID(gene_id);
 	genePhenotype = make_pair(L, m_id);
+	geneIDAndType = make_pair(gene_id,gene_type);
 	if(!IsGeneInMap(dummy))
-		mapGenes.insert(make_pair(gene_id,genePhenotype));
+		mapGenes.insert(make_pair(geneIDAndType,genePhenotype));
 	//cout << gene_id << "|" << L << "|" << m_id << "\n";
 	string mstring = smline.str();
 	return mstring;
@@ -124,14 +136,15 @@ string Map :: RestoreMap(stringstream& smline)
 void Map :: SaveBackupMap(fstream&  backupFile)
 {
 	//cout << "saving Map..."<<endl;
-	map< int, pair <int, int> > ::iterator it;
+	map< pair<int,int>, pair <int, int> > ::iterator it;
 	backupFile << mapGenes.size() <<"\t";
 	for(it = mapGenes.begin(); it != mapGenes.end(); it ++)
 	 {
-		backupFile <<(*it).first << "\t" << (*it).second.first <<"\t"<< (*it).second.second <<"\t";
+		backupFile <<(*it).first.first << "\t" <<(*it).first.second << "\t" << (*it).second.first <<"\t"<< (*it).second.second <<"\t";
 
 	 }
 }
+
 /* This function assures that every single gene in the pool is unique*/
 bool GenePool:: GeneAlreadyInPool(int geneID)
 {
@@ -493,4 +506,8 @@ void KIRGene::SaveBackupGenes(fstream &backupFile)
 	//cout <<"saving kir genes......" <<endl;
 }
 
+void KIRGene::PrintGenes()
+{
+	cout << geneType << " | " << geneID << " | "<<specificity << " | "<< mID << " | "<<endl;
+}
 

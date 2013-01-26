@@ -154,7 +154,7 @@ void World ::CreateBirthAndDeathRates()
 
 			double death = exp(0.1*i-10.5)+ exp(-0.4*i-8);
 			deathRates.push_back(death);
-			cout << i << " "<< birth <<" "<< death << endl;
+			//cout << i << " "<< birth <<" "<< death << endl;
 		}
 	}
 	catch (...) {
@@ -587,7 +587,7 @@ void World ::IntroduceVirus(const string& secondVirus)
 				}
 			}			
 		}break;
-		default: cout <<"ERROR!!!!!! shouldn't happen!" <<endl; exit(1);
+		default: cout <<"ERROR!!!!!! an impossible number if infections! shouldn't happen!" <<endl; exit(1);
 	}
 }
 
@@ -782,10 +782,10 @@ void World::SaveMap()
 	s+=".Map.log";
 	mapFile.open(s.c_str(), ios::out);
 
-	map< int, pair <int, int> > ::iterator it;
+	map< pair <int,int>, pair <int, int> > ::iterator it;
 	for(it = KIRGenesMap.GetMap().begin(); it != KIRGenesMap.GetMap().end(); it ++)
 	{
-		mapFile << (*it).first << "|" << (*it).second.first <<"|"<< (*it).second.second <<endl;
+		mapFile << (*it).first.first << "|" <<(*it).first.second << "|" << (*it).second.first <<"|"<< (*it).second.second <<endl;
 	}
 	mapFile.close();
 }

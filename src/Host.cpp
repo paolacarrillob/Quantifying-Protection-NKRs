@@ -168,20 +168,30 @@ Host::Host(int loci_kir, int loci_mhc, double _mutationRate, bool _tuning, int n
 
 	//create random KIRs with random specificity for ONE haplotype
 	// (at the beginning of the simulation, the size of the map should equal the LOCI_NUMBER)
-	map< int, pair <int, int> > ::iterator it;
+	map< pair<int,int>, pair <int, int> > ::iterator it;
 	for(it = kirMap.GetMap().begin(); it != kirMap.GetMap().end(); it ++)
 	{
-		int id = it->first;
+		int id = it->first.first;
+		int geneType = it->first.second;
 		int L = it->second.first;
 		int pseudo = it->second.second;
 		KIRGene kir;
 		kir.SetGeneSpecificity(L);
 		kir.SetGeneID(id);
 		kir.SetPseudogene(pseudo);
+		kir.SetGeneType(geneType);
 		kir.SetGeneFunctionality(false);
 		kir.SetGeneExpression(false);
-		kir.SetGeneType(gene_type); // 0 for inhibitory receptor; 1 for activating receptors!
+		cout << id << geneType << L << pseudo <<endl;
+		/*int geneType;
+		if(RandomNumberDouble()<0.5)
+			geneType = 0; //inhibitory
+		else
+			geneType = 1; //activating;
+		kir.SetGeneType(geneType); // 0 for inhibitory receptor; 1 for activating receptors!
+		//cout << kir.GetGeneType() <<endl;*/
 		kirGenes.push_back(kir);
+		kir.PrintGenes();
 
 	}
 	//copy the 5 first kirs into the other haplotype
@@ -377,7 +387,7 @@ void Host :: MutateGenes(int mutationType, KIRGene& kir_hap2, Map& kirMap, GeneP
 		if(!kirMap.IsGeneInMap(newGene))
 		{
 			kirMap.FillMap(mhcPool, newGene);
-			newGene.SetGeneType(gene_type);////to test just what happens if i ONLY have activating receptors!
+			//newGene.SetGeneType(gene_type);////to test just what happens if i ONLY have activating receptors!
 			kir_hap2.Copy(newGene);
 		}
 
@@ -760,7 +770,7 @@ void Host::ClearInfection(double simulationTime, Infection& _infection)
 				}
 			}
 			
-			ClearDecoyWithActivatingAndInhibitory(inhibiting_kirs_recognizing_decoy, activating_kirs_recognizing_decoy, simulationTime, _infection);
+			//ClearDecoyWithActivatingAndInhibitory(inhibiting_kirs_recognizing_decoy, activating_kirs_recognizing_decoy, simulationTime, _infection);
 			
 			/*This is with different of protection depending which receptors we have. Above is the
 			 *same... I don't completely agree, but let's see what happens! -> try out the new one!
