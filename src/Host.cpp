@@ -383,51 +383,86 @@ void Host :: MutateGenes(int mutationType, KIRGene& kir_hap2, Map& kirMap, GeneP
 {
 	if(mutationType == 1)//pick another molecules as mutation
 	{
-		KIRGene newGene(RandomNumber(2,16));
+		KIRGene newGene(RandomNumber(2,15));
+		/*
 		if(!kirMap.IsGeneInMap(newGene))
 		{
 			kirMap.FillMap(mhcPool, newGene);
-			//newGene.SetGeneType(gene_type);////to test just what happens if i ONLY have activating receptors!
+			if(gene_type !=2)////force to have only one type of receptors, if the user wants it!
+				newGene.SetGeneType(gene_type);
 			kir_hap2.Copy(newGene);
-		}
+		} /*/
 
 		/*if(RandomNumberDouble()<0.5) //change it to switch receptor types
 		{
 			kir_hap2.MutateReceptorType();
 		}*/
+		//*/
+		int M_id = 0;
+		int mhcPoolSize = mhcPool.GetPoolSize();
+
+
+		//calculate the value of M_id to determine whether the gene is pseudogene or not
+		for(unsigned int i = 0; i < mhcPoolSize; i++)
+		{
+			Gene mhcGene;
+			mhcGene.SetGeneID(mhcPool.GetGenes().at(i));
+			int L = newGene.BindMolecule(mhcGene);
+			if(L >= newGene.GetGeneSpecificity())
+				M_id += (1<<i);
+		}
+		newGene.SetPseudogene(M_id);
+		if(gene_type !=2)////force to have only one type of receptors, if the user wants it!
+			newGene.SetGeneType(gene_type);
+		kir_hap2.Copy(newGene);
+		return; //*/
 	}
 
 	if(mutationType == 2)//point mutation + L
 	{
-		//cout<< "original: ";
-		//cout << kir_hap2.GetGeneSpecificity() << "|" << kir_hap2.GetGeneMid()<< "|";
-		//kir_hap2.PrintBits();
-		if(RandomNumberDouble()<0.8)
+
+		if(RandomNumberDouble()<0.8) //pointmutation
 		{
 			kir_hap2.PointMutation();
-			kirMap.FillMap(mhcPool, kir_hap2);
-			//cout<< "point:    ";
-			//cout << kir_hap2.GetGeneSpecificity() << "|" << kir_hap2.GetGeneMid()<< "|";
-			//kir_hap2.PrintBits();
+			//kirMap.FillMap(mhcPool, kir_hap2);
+			int M_id = 0;
+			int mhcPoolSize = mhcPool.GetPoolSize();
+
+			//calculate the value of M_id to determine whether the gene is pseudogene or not
+			for(unsigned int i = 0; i < mhcPoolSize; i++)
+			{
+				Gene mhcGene;
+				mhcGene.SetGeneID(mhcPool.GetGenes().at(i));
+				int L = kir_hap2.BindMolecule(mhcGene);
+				if(L >= kir_hap2.GetGeneSpecificity())
+					M_id += (1<<i);
+			}
+			kir_hap2.SetPseudogene(M_id);
 		}
 
-		if(RandomNumberDouble()<0.2)
+		if(RandomNumberDouble()<0.8) //mutate L
 		{
 			kir_hap2.MutateSpecificity();
-			kirMap.FillMap(mhcPool, kir_hap2);
-			/*if(RandomNumberDouble()<0.5)
-			{
-				kir_hap2.MutateReceptorType();
-			}*/
-			//cout<< "spec:     ";
-			//cout << kir_hap2.GetGeneSpecificity() << "|" << kir_hap2.GetGeneMid()<< "|";
-			//kir_hap2.PrintBits();
+			//kirMap.FillMap(mhcPool, kir_hap2);
+			int M_id = 0;
+			int mhcPoolSize = mhcPool.GetPoolSize();
 
+			//calculate the value of M_id to determine whether the gene is pseudogene or not
+			for(unsigned int i = 0; i < mhcPoolSize; i++)
+			{
+				Gene mhcGene;
+				mhcGene.SetGeneID(mhcPool.GetGenes().at(i));
+				int L = kir_hap2.BindMolecule(mhcGene);
+				if(L >= kir_hap2.GetGeneSpecificity())
+					M_id += (1<<i);
+			}
+			kir_hap2.SetPseudogene(M_id);
 		}
-		/*if(RandomNumberDouble()<0.2)
+		if(RandomNumberDouble()<0.8)//mutate type
 		{
 			kir_hap2.MutateReceptorType();
-		}*/
+		}
+		return;
 	}
 }
 
@@ -462,6 +497,7 @@ void Host :: EducateKIRs()
 					//cout << "it doesn't bind!"<<endl;
 					kirIt->SetGeneFunctionality(false); // it should not be licensed
 					kirIt->SetGeneExpression(false);
+					break;
 					//cout<< "inhibitory |" <<kirIt->IsFunctional()<< kirIt->GetGeneType()<<endl;
 				}
 			}
@@ -616,7 +652,7 @@ Host& Host:: Copy(Host& rightHandSideHost)
 	return *this; // returns self-reference so cascaded assignment works
 }
 
-#include <boost/math/special_functions/round.hpp>
+//#include <boost/math/special_functions/round.hpp>
 /*
 double Host :: GetIntrinsicDeathRate(const vector<double>& rates)
 {
@@ -729,7 +765,7 @@ void Host::ClearInfection(double simulationTime, Infection& _infection)
 		case 1://if it's an mHC downregulating virus
 		{
 
-			if(inhibitoryKIRs) //only if there is at least one functional INHIBITORY KIR, clear the infection
+			if(inhibitoryKIRs>0) //only if there is at least one functional INHIBITORY KIR, clear the infection
 			{
 				if(RandomNumberDouble()<0.5)
 				{
@@ -776,17 +812,17 @@ void Host::ClearInfection(double simulationTime, Infection& _infection)
 			 *same... I don't completely agree, but let's see what happens! -> try out the new one!
 			 **/
 
-			if(inhibitoryKIRs && !activatingKIRs) //if that host has ONLY inhibitory receptors
+			if(inhibitoryKIRs > 0 && activatingKIRs == 0) //if that host has ONLY inhibitory receptors
 			 {
 			 ClearDecoyWithInhibitoryOnly(inhibiting_kirs_recognizing_decoy, simulationTime, _infection);
 			 }
 			 
-			 if(!inhibitoryKIRs && activatingKIRs) //if that host has ONLY activating receptors
+			 if(inhibitoryKIRs == 0 && activatingKIRs>0) //if that host has ONLY activating receptors
 			 {
 			 ClearDecoyWithActivatingOnly(activating_kirs_recognizing_decoy, simulationTime, _infection);
 			 }
 			 
-			 if(inhibitoryKIRs && activatingKIRs) //if that host has both types of receptors
+			 if(inhibitoryKIRs>0 && activatingKIRs>0) //if that host has both types of receptors
 			 {
 			 ClearDecoyWithActivatingAndInhibitory(inhibiting_kirs_recognizing_decoy, activating_kirs_recognizing_decoy, simulationTime, _infection);
 			 }
@@ -797,12 +833,12 @@ void Host::ClearInfection(double simulationTime, Infection& _infection)
 void Host :: ClearDecoyWithInhibitoryOnly(int inhibiting_signal, double simulationTime, Infection& _infection)
 {
 	//cout <<"clearing decoy: "<<inhibitoryKIRs << "|"<< activatingKIRs << endl;
-	if(!inhibiting_signal) //if there is no inhibiting signal, receptor didn't bind to the decoy: protection like MHC down
+	if(inhibiting_signal==0) //if there is no inhibiting signal, receptor didn't bind to the decoy: protection like MHC down
 	{
 		if(RandomNumberDouble()<0.5)
 		{
 			_infection.ResetInfection(simulationTime);
-			cout <<"clearing infection..."<<endl;
+			//cout <<"clearing infection..."<<endl;
 		}
 			
 	}
@@ -811,7 +847,7 @@ void Host :: ClearDecoyWithInhibitoryOnly(int inhibiting_signal, double simulati
 void Host :: ClearDecoyWithActivatingOnly(int activating_signal, double simulationTime, Infection& _infection)
 {
 	//cout <<"clearing decoy: "<<inhibitoryKIRs << "|"<< activatingKIRs << endl;
-	if(activating_signal) //if activating receptor recognizes decoy, but there are no inhibitory receptors, the virus still escapes response of the T-cells
+	if(activating_signal>0) //if activating receptor recognizes decoy, but there are no inhibitory receptors, the virus still escapes response of the T-cells
 	{                       // protection as with an MHC-downregulating one
 		if(RandomNumberDouble()<0.5)
 			_infection.ResetInfection(simulationTime);
@@ -823,9 +859,9 @@ void Host ::ClearDecoyWithActivatingAndInhibitory(int inhibiting_signal, int act
 {
 	//if functional KIRs recognize MHC down
 	//cout <<"clearing decoy: "<<inhibitoryKIRs << "|"<< activatingKIRs << endl;
-	if(inhibitoryKIRs > 0 && activating_signal) //and there is enough activating signal
+	if(inhibitoryKIRs > 0 && activating_signal > 0) //and there is enough activating signal
 	{
-		if(!inhibiting_signal) //best protection
+		if(inhibiting_signal==0) //best protection
 		{
 			if(RandomNumberDouble()<0.5)
 			{
@@ -834,7 +870,7 @@ void Host ::ClearDecoyWithActivatingAndInhibitory(int inhibiting_signal, int act
 				return;
 			}
 		}
-		if(inhibiting_signal) //good protection
+		if(inhibiting_signal > 0) //good protection
 		{
 			if(RandomNumberDouble()<0.5)
 			{
@@ -845,10 +881,10 @@ void Host ::ClearDecoyWithActivatingAndInhibitory(int inhibiting_signal, int act
 		}
 	}
 	//if functional KIRs recognize MHC down
-	if(inhibitoryKIRs > 0 && !activating_signal)	//but there is not enough activation OR only inhibitory receptors!
+	if(inhibitoryKIRs > 0 && activating_signal == 0)	//but there is not enough activation OR only inhibitory receptors!
 	{
 		//check whether the host is fooled or not
-		if(!inhibiting_signal) // if no inhibitory receptor recognizes the decoy:
+		if(inhibiting_signal == 0) // if no inhibitory receptor recognizes the decoy:
 		{                                             //same as MHC downregulation p= 0.5
 			if(RandomNumberDouble()<0.5)
 			{
@@ -900,6 +936,24 @@ Virus& Host :: GetChronicInfection()
 	//cout << randomChronicInfections.size() << "   size....." <<endl;
 	return randomChronicInfections.at(random);
 }
+
+/*This functions counts the number of chronic and acute infections (i.e ignores incubating individuals and obviously immune ones)*/
+int Host :: CountInfections()
+{
+	int total_infections = 0;
+	list <Infection>::iterator it;
+	int inf_type = 0;
+	for(it = infections.begin(); it != infections.end(); it++)
+	{
+		inf_type = it->GetInfectionType();
+		if(!inf_type || inf_type == 3 || inf_type == 4)
+			continue;
+		else
+			total_infections++;
+	}
+	return total_infections;
+}
+
 
 void Host :: UpdateParameters(double timeStep, double simulationTime)
 {

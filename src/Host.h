@@ -139,6 +139,8 @@ public:
 	Virus& GetAcuteInfection(); //works
 	Virus& GetChronicInfection(); //works
 	
+	int CountInfections();//ok
+
 	double GetMutationRate(){return mutationRateHost;};
 	double GetViralDeathRate(){return viralDeathRate;};
 	int GetMainInfectionType(); //works

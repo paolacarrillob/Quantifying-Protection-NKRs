@@ -55,16 +55,10 @@ void World :: LoadParameterFile(const string& fileName)
 	timeStep= timeStep*WEEK;
 	simulationTime = 0.0;
 	timeEnd = timeEnd*YEAR;
-	//timeRecording = timeRecording * YEAR;
+
 	timeIntroducingInfection = timeIntroducingInfection*YEAR;
-	timeMHCDownregulation = timeIntroducingInfection + 5000*YEAR;
-/*	if(onlyAcuteInfection)
-		timeMHCDownregulation = timeIntroducingInfection + 700*YEAR;
-	else
-		timeMHCDownregulation = timeIntroducingInfection + 200*YEAR;	 //an acute infection needs longer time
-	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 //to reach steady state, that is why MHC downregulation
-	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 //should come even later
-*/
+	timeMHCDownregulation = timeIntroducingInfection + 500*YEAR;
+
 	timeDecoy = timeMHCDownregulation + 100000*YEAR;
 	outfileRate = 1.0/(t_outfile*YEAR);
 	backupRate = 1.0/(t_backup*YEAR);
@@ -79,12 +73,19 @@ void World :: LoadParameterFile(const string& fileName)
 	downregulatingVirus.SetViralParameters(downregulationRate, decoyRate,deltaVirus,timeInfection, 1, onlyAcuteInfection);
 	decoyVirus.SetViralParameters(downregulationRate, decoyRate, deltaVirus, timeInfection, 2, onlyAcuteInfection);
 	
-	acute_infected = 0;
-	chronic_infected = 0;
-	immune = 0;
+	//	acute_infected = 0;
+	//	chronic_infected = 0;
+	//	immune = 0;
 	downregulating = 0;
+	downregulating_immune = 0;
 	decoy = 0;
+	decoy_immune = 0;
 	wildtype = 0;
+	wildtype_immune = 0;
+
+	simpleInfection = 0;
+	doubleInfection = 0;
+	tripleInfection = 0;
 	WriteInfo();
 }
 
@@ -125,6 +126,7 @@ bool World::Initialize()
 	for (int i =  0; i <KIRLoci; i++)
 	{
 		KIRGene dummy_gene(KIRspecificity);
+		dummy_gene.SetGeneType(KIRGeneType);
 		if (!KIRGenesMap.IsGeneInMap(dummy_gene))
 			KIRGenesMap.FillMap(MHCPool, dummy_gene);
 	}
@@ -411,26 +413,20 @@ void World::Simulate()
 			//let event happen for every random host
 			int index = *shuffledHostsit;
 			Host babyHost;
-//			cout <<"\t4\n"<<endl;
-			//if(Birth(index, babyHost))
 			if(Birth(index,id_counter))
 			{
-//				cout <<"\t4\n"<<endl;
-				//hosts.push_back(babyHost);
 				number_babies++;
 				id_counter++;
 			}
-//			cout <<"\t4\n"<<endl;
+
 			Infect(index);
-//			cout <<"\t5\n"<<endl;
+
 			Escape(index);
-//			cout <<"\t6\n"<<endl;
+
 			if(Death(index))
 			{
-				//hosts.at(index).SetDead();
 				number_dead_people++;
 			}
-//			cout <<"\t7\n"<<endl;
 			
 			//clear the infection
 			list<Infection>::iterator inf;
@@ -443,25 +439,17 @@ void World::Simulate()
 				}
 
 			}
-//			cout <<"\t8\n"<<endl;
 			hosts.at(index).UpdateParameters(timeStep,simulationTime);
-//			cout <<"\t9\n"<<endl;
 		}
-		
-		//record those who are dying!
-	/*	if(SaveAgeDyingHosts(lastOutfileTime, lastStopOutfileTime))
-			lastStopOutfileTime = simulationTime;*/
-
-		//RemoveDeadHosts();
 		RemoveDeadHosts_HappyNewYear();
-//		cout << "hosts size:" << hosts.size() << endl;
-//		cout <<"\t10\n";
+
 		//printing out the population size not every week but with a rate (otherwise the file will turn huge!!!!)
 		bool timeToPrintPopulationSize = floor((simulationTime-lastPopulationOutfileTime)*populationSizeRate)>0;
 		if(simulationTime == 0.0 || timeToPrintPopulationSize)
 		{
 			//cout << "what's going on?????" <<endl;
-			SavePopulationSize(number_babies,number_dead_people);
+			//SavePopulationSize(number_babies,number_dead_people);
+			SavePopulationSize();
 			lastPopulationOutfileTime = simulationTime;
 		}
 		if(hosts.size() == 0)
@@ -471,7 +459,6 @@ void World::Simulate()
 		}
 		TrackInfectedIndividuals();
 
-		//cout<< "Time: " << simulationTime/YEAR <<endl;
 		// printing out the gene files
 		bool timeToPrintOut = floor((simulationTime-lastOutfileTime)*outfileRate)>0;
 		if(simulationTime == 0.0 || timeToPrintOut)
@@ -593,16 +580,24 @@ void World ::IntroduceVirus(const string& secondVirus)
 
 void World::TrackInfectedIndividuals()
 {
-	acute_infected = 0;
-	chronic_infected = 0;
-	immune = 0;
+	//	acute_infected = 0;
+	//	chronic_infected = 0;
+	//	immune = 0;
 	downregulating = 0;
+	downregulating_immune = 0;
 	decoy = 0;
+	decoy_immune = 0;
 	wildtype = 0;
+	wildtype_immune = 0;
+
+	simpleInfection = 0;
+	doubleInfection = 0;
+	tripleInfection = 0;
 	
 	vector<Host>::iterator it_host = hosts.begin();
 	while(it_host != hosts.end())
 	{	//check what kind of infections the hosts have
+		/*
 		list<Infection>:: iterator it;
 		for(it = it_host->infections.begin(); it!= it_host->infections.end(); it++)
 		{
@@ -636,6 +631,47 @@ void World::TrackInfectedIndividuals()
 				default: cout <<"ERROR!!!!!! COUNTING OTHER VIRUSES! shouldn't happen!" <<endl; exit(1);
 			}
 		}
+		it_host++; /*/
+		// check how many infections each host has
+		int number_infections = it_host->CountInfections();
+		switch(number_infections)
+		{
+		case 0: break;
+		case 1: simpleInfection++; break;
+		case 2: doubleInfection++; break;
+		case 3: tripleInfection++; break;
+		default: cout << "ERROR!!!! counting more than three infections per host, this should be IMPOSSIBLE!!!! " <<number_infections <<endl; exit(1);
+		}
+
+		//check what kind of infections the hosts have
+		list<Infection>:: iterator it;
+		for(it = it_host->infections.begin(); it!= it_host->infections.end(); it++)
+		{
+			int inf_type = it->GetInfectionType();
+			int virus_type = it->pathogen.GetVirusType();
+			switch(virus_type)
+			{
+				case 0:
+					if(inf_type!=3) //count them only if they are not immune!
+						wildtype++;
+					else
+						wildtype_immune ++;
+				break;
+				case 1:
+					if(inf_type != 3) //count them only if they are not immune!
+						downregulating++;
+					else
+						downregulating_immune++;
+				break;
+				case 2:
+					if(inf_type !=3) //count them only if they are not immune!
+						decoy++;
+					else
+						decoy_immune++;
+				break;
+				default: cout <<"ERROR!!!!!! COUNTING OTHER VIRUSES! shouldn't happen!" <<endl; exit(1);
+			}
+		}
 		it_host++;
 	}
 }
@@ -656,58 +692,6 @@ void World::RemoveDeadHosts_HappyNewYear()
 	}
 //	if(deathcount >0)
 //		cout << deathcount << endl;
-}
-
-void World::RemoveDeadHosts()
-{
-	//deleting the hosts
-	acute_infected = 0;
-	chronic_infected = 0;
-	immune = 0;
-	downregulating = 0;
-	decoy = 0;
-	wildtype = 0;
-	
-	int pos = 0;
-	int max = hosts.size();
-	while(pos < max)
-	{
-		//cout << "i am here?" << max << " pos: "<<pos<<endl;
-		if(hosts.at(pos).IsDead())
-		{
-
-			//remove the host
-			hosts.erase(hosts.begin() + pos);
-			max = hosts.size();
-			//pos--;
-		}
-		else
-		{	//check what kind of infections the hosts have
-			list<Infection>:: iterator it;
-			for(it = hosts.at(pos).infections.begin(); it!= hosts.at(pos).infections.end(); it++)
-			{
-				int inf_type = it->GetInfectionType();
-				switch(inf_type)
-				{
-					case 0:{acute_infected++;}break;
-					case 1:{acute_infected++;}break;
-					case 2:{chronic_infected++;}break;
-					case 3:{immune++;}break;
-					//default: cout <<"ERROR!!!!!! COUNTING OTHER INFECTIONS! shouldn't happen!" <<endl; exit(1);
-				}
-				int virus_type = it->pathogen.GetVirusType();
-				switch(virus_type)
-				{
-					case 0:{wildtype++;}break;
-					case 1:{downregulating++;}break;
-					case 2:{decoy++;}break;
-					default: cout <<"ERROR!!!!!! COUNTING OTHER VIRUSES! shouldn't happen!" <<endl; exit(1);
-				}
-			}
-
-		}
-		pos ++;
-	}
 }
 
 /*Functions which do the OUTPUT files*/
@@ -747,12 +731,13 @@ void World:: SaveGenes()
 }
 
 /*This function keeps track (and saves) of the population size*/
-void World::SavePopulationSize(int babies,int dead_people)
+void World::SavePopulationSize()
 {
 	//populationSize << "hehehehehehe"<<endl;
-	populationSize <<simulationTime/YEAR <<"\t"<< hosts.size() <<"\t"<<babies <<"\t"<<dead_people<<"\t"<<acute_infected << "\t"<< chronic_infected << "\t"<< immune << "\t"<<wildtype<<"\t"<<downregulating<< "\t"<< decoy <<"\n";
-}
+	//populationSize <<simulationTime/YEAR <<"\t"<< hosts.size() <<"\t"<<acute_infected << "\t"<< chronic_infected << "\t"<< immune << "\t"<<wildtype<<"\t"<<downregulating<< "\t"<< decoy <<"\n";
 
+	populationSize <<simulationTime/YEAR <<"\t"<< hosts.size() <<"\t"<<simpleInfection << "\t"<< doubleInfection<< "\t"<< tripleInfection<< "\t"<<wildtype<<"\t"<<wildtype_immune << "\t"<<downregulating<< "\t"<<downregulating_immune<<"\t"<< decoy <<"\t"<<decoy_immune<<"\n";
+}
 /*This function keeps track (ans saves) several parameters of the host and virus*/
 void World::SaveParameters()
 {

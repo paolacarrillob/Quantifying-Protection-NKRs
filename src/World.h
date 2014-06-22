@@ -37,7 +37,8 @@ public:
 	void Simulate();
 
 	void SaveGenes();//works
-	void SavePopulationSize(int babies,int dead_people);//works
+	//void SavePopulationSize(int babies,int dead_people);//works
+	void SavePopulationSize();//works
 	void SaveParameters();//works
 	void SaveMap();
 	bool SaveAgeDyingHosts(double lastOutfileTime, double lastStopOutfileTime);
@@ -101,12 +102,24 @@ protected:
     vector<double> deathRates;
     vector<double> birthRates;
 
+	/*
 	int acute_infected;
 	int chronic_infected;
 	int immune;
 	int downregulating;
 	int decoy;
+	int wildtype;/*/
+
+	int downregulating;
+	int downregulating_immune;
+	int decoy;
+	int decoy_immune;
 	int wildtype;
+	int wildtype_immune;
+
+	int simpleInfection;
+	int doubleInfection;
+	int tripleInfection;
 	
 	int maxNumberOfInfectionsPerHost;
 	

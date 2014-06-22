@@ -1,0 +1,104 @@
+[Maximal population size]
+500
+
+[Initial population size]
+450
+
+#time step in weeks
+[Time Step]
+1
+
+#t_end in years
+[End of Simulation]
+10000
+
+#time introducing the infection in years
+[Time introducing infection]
+100
+
+#time at which the outputs should be done in years
+[Time outfile]
+10
+
+#time at which a backup of the data should be done
+[Time backup]
+100000
+
+#time at which the population size should be written into file (in years)
+[Population Time]
+10
+
+[Mutation rate host]
+0.0005
+
+# 1: a random KIR will be picked; 2: PointMutation + L=/-1
+[Mutation type host]
+1
+
+[Contacts per week]
+1
+
+[KIR Loci]
+10
+
+# 0: inhibitory; 1: activating; 2:both
+[KIR type]
+0
+
+[MHC Loci]
+2
+
+# 1: HLA C distribution according to data base; 0: all alleles have the same frequency
+[HLA-C alleles distribution]
+0
+
+# Number of MHC alleles
+[Number HLA-C alleles]
+30
+
+#defines the initial specificty of the KIRs
+[MHC-KIR specificity]
+4
+
+# 1: education process is ON; 0: education process is OFF
+[Tuning]
+1
+
+# besides only functional KIRs
+[Extra Number KIRs to be expressed]
+0
+
+#infectiosness of the virus, i.e. increase of death rate due to infection
+[Viral load]
+0.1
+
+#duration of infection in weeks
+[Life time of the virus]
+1
+
+[MHC dowregulation rate]
+0.0001
+
+[Decoy rate]
+0.0001
+
+[Transmission rate acute infection]
+0.8
+
+[Transmission rate chronic infection]
+0.15
+
+#allow for mutation of only mhc(0), only decoy(1) or both (2)
+[Type of mutation]
+1
+
+#1: only acute, 0: acute and chronic
+[Type of infection]
+0
+
+[Maximal Number of Infections]
+1
+
+# type of the second infection either "decoy" or "mhc down"
+[Second Virus]
+decoy

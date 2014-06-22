@@ -10,8 +10,9 @@
 //#include <kaExceptions.h>
 #include "Exceptions.h"
 #include <fstream>
-#include <string>
+#include <string.h>
 #include <sstream>
+#include <stdio.h>
 
 class kaBackup
 {

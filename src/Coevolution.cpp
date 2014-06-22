@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include "World.h"
+#include <string.h>
 #include "Exceptions.h"
 using namespace std;
 
