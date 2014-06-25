@@ -57,7 +57,7 @@ void World :: LoadParameterFile(const string& fileName)
 	timeEnd = timeEnd*YEAR;
 
 	timeIntroducingInfection = timeIntroducingInfection*YEAR;
-	timeMHCDownregulation = timeIntroducingInfection + 500*YEAR;
+	timeMHCDownregulation = timeIntroducingInfection + 5000*YEAR;
 
 	timeDecoy = timeMHCDownregulation + 100000*YEAR;
 	outfileRate = 1.0/(t_outfile*YEAR);

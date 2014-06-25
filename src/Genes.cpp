@@ -421,8 +421,15 @@ void KIRGene ::SetGeneType(int type)
 {
 	switch(type)
 	{
-	case 0:{geneType = inhibitory;}break;
-	case 1:{geneType = activating;}break;
+		case 0:{geneType = inhibitory;}break;
+		case 1:{geneType = activating;}break;
+		case 2:
+		{
+			if(RandomNumberDouble()<0.5)
+				geneType = inhibitory;
+			else
+				geneType = activating;
+		}break;
 	}
 }
 

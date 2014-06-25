@@ -43,7 +43,7 @@
 
 # 0: inhibitory; 1: activating; 2:both
 [KIR type]
-0
+2
 
 [MHC Loci]
 2

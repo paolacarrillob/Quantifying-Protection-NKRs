@@ -489,6 +489,7 @@ void Host :: EducateKIRs()
 					//cout << "it binds!"<<endl;
 					kirIt->SetGeneFunctionality(true); //it is licensed!
 					kirIt->SetGeneExpression(true);
+					break;
 					//cout<< "inhibitory |" <<kirIt->IsFunctional()<< kirIt->GetGeneType()<<endl;
 				}
 
@@ -497,7 +498,7 @@ void Host :: EducateKIRs()
 					//cout << "it doesn't bind!"<<endl;
 					kirIt->SetGeneFunctionality(false); // it should not be licensed
 					kirIt->SetGeneExpression(false);
-					break;
+
 					//cout<< "inhibitory |" <<kirIt->IsFunctional()<< kirIt->GetGeneType()<<endl;
 				}
 			}
